@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SmartMusic Debug & Testing</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+        
+        header {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 30px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+        
+        .subtitle {
+            color: #666;
+            font-size: 14px;
+        }
+        
+        .section {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 25px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        
+        .section h2 {
+            color: #333;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 10px;
+        }
+        
+        .test-item {
+            margin-bottom: 20px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-left: 4px solid #667eea;
+            border-radius: 5px;
+        }
+        
+        .test-item h3 {
+            color: #667eea;
+            margin-bottom: 10px;
+            font-size: 14px;
+        }
+        
+        .test-item p {
+            color: #555;
+            font-size: 13px;
+            margin-bottom: 10px;
+            font-family: 'Courier New', monospace;
+        }
+        
+        .input-group {
+            display: flex;
+            gap: 10px;
+            margin: 10px 0;
+        }
+        
+        input[type="text"] {
+            flex: 1;
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 13px;
+        }
+        
+        button {
+            padding: 8px 20px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 13px;
+            transition: background 0.3s;
+        }
+        
+        button:hover {
+            background: #764ba2;
+        }
+        
+        button.primary {
+            background: #1db954;
+        }
+        
+        button.primary:hover {
+            background: #1ed760;
+        }
+        
+        .result {
+            margin-top: 15px;
+            padding: 12px;
+            background: #f0f0f0;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+            max-height: 300px;
+            overflow-y: auto;
+            font-size: 12px;
+            font-family: 'Courier New', monospace;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        
+        .result.loading {
+            color: #667eea;
+        }
+        
+        .result.success {
+            background: #d4edda;
+            border-color: #c3e6cb;
+            color: #155724;
+        }
+        
+        .result.error {
+            background: #f8d7da;
+            border-color: #f5c6cb;
+            color: #721c24;
+        }
+        
+        .status-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            margin: 5px 5px 5px 0;
+        }
+        
+        .status-badge.ok {
+            background: #d4edda;
+            color: #155724;
+        }
+        
+        .status-badge.error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        
+        .status-badge.loading {
+            background: #d1ecf1;
+            color: #0c5460;
+        }
+        
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        
+        @media (max-width: 768px) {
+            .grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🎵 SmartMusic Debug & Testing Panel</h1>
+            <p class="subtitle">Test platform features and system status</p>
+        </header>
+        
+        <div class="section">
+            <h2>System Status</h2>
+            <button class="primary" onclick="checkStatus()">Check System Status</button>
+            <div id="statusResult" class="result" style="display:none;"></div>
+        </div>
+        
+        <div class="section">
+            <h2>Network Information</h2>
+            <button class="primary" onclick="getNetworkInfo()">Get Network Info</button>
+            <div id="networkResult" class="result" style="display:none;"></div>
+        </div>
+        
+        <div class="section">
+            <h2>Spotify Artist Search Tests</h2>
+            
+            <div class="test-item">
+                <h3>Quick Artist Search</h3>
+                <p>GET /debug/test-artist/&lt;artist_name&gt;</p>
+                <div class="input-group">
+                    <input type="text" id="artistInput" placeholder="Artist name (e.g., D Signature, The Weeknd)" value="D Signature">
+                    <button onclick="testArtistSearch()">Test Search</button>
+                </div>
+                <div id="artistResult" class="result" style="display:none;"></div>
+            </div>
+            
+            <div class="test-item">
+                <h3>Full Artist Endpoint Test</h3>
+                <p>GET /spotify/artist?artist=&lt;query&gt;</p>
+                <div class="input-group">
+                    <input type="text" id="fullSearchInput" placeholder="Artist name (e.g., D Signature, The Weeknd)" value="D Signature">
+                    <button onclick="testFullSearch()">Test Full Search</button>
+                </div>
+                <div id="fullSearchResult" class="result" style="display:none;"></div>
+            </div>
+        </div>
+        
+        <div class="section">
+            <h2>Available Debug Endpoints</h2>
+            <div class="test-item">
+                <h3>GET /debug/status</h3>
+                <p>Check system status: database, blockchain, IPFS, Spotify</p>
+            </div>
+            <div class="test-item">
+                <h3>GET /debug/network-info</h3>
+                <p>Get network and server connection information</p>
+            </div>
+            <div class="test-item">
+                <h3>GET /debug/test-features</h3>
+                <p>List all available test endpoints</p>
+            </div>
+            <div class="test-item">
+                <h3>GET /debug/test-artist/&lt;name&gt;</h3>
+                <p>Test Spotify artist search with artist name</p>
+            </div>
+            <div class="test-item">
+                <h3>GET /debug/test-spotify-search/&lt;query&gt;</h3>
+                <p>Full test of complete Spotify artist endpoint</p>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        function getApiBase() {
+            return window.location.protocol + '//' + window.location.hostname + ':' + (window.location.port || '5000');
+        }
+        
+        function showResult(elementId, data, isSuccess = true, isLoading = false) {
+            const elem = document.getElementById(elementId);
+            elem.style.display = 'block';
+            elem.className = 'result';
+            if (isLoading) {
+                elem.classList.add('loading');
+                elem.textContent = 'Loading...';
+            } else if (isSuccess) {
+                elem.classList.add('success');
+                elem.textContent = JSON.stringify(data, null, 2);
+            } else {
+                elem.classList.add('error');
+                elem.textContent = typeof data === 'string' ? data : JSON.stringify(data, null, 2);
+            }
+        }
+        
+        function checkStatus() {
+            const elem = document.getElementById('statusResult');
+            showResult('statusResult', '', true, true);
+            
+            fetch(getApiBase() + '/debug/status')
+                .then(r => r.json())
+                .then(data => showResult('statusResult', data, true))
+                .catch(e => showResult('statusResult', 'Error: ' + e.message, false));
+        }
+        
+        function getNetworkInfo() {
+            const elem = document.getElementById('networkResult');
+            showResult('networkResult', '', true, true);
+            
+            fetch(getApiBase() + '/debug/network-info')
+                .then(r => r.json())
+                .then(data => showResult('networkResult', data, true))
+                .catch(e => showResult('networkResult', 'Error: ' + e.message, false));
+        }
+        
+        function testArtistSearch() {
+            const artist = document.getElementById('artistInput').value;
+            if (!artist) { alert('Enter an artist name'); return; }
+            
+            showResult('artistResult', '', true, true);
+            
+            fetch(getApiBase() + '/debug/test-artist/' + encodeURIComponent(artist))
+                .then(r => r.json())
+                .then(data => showResult('artistResult', data, true))
+                .catch(e => showResult('artistResult', 'Error: ' + e.message, false));
+        }
+        
+        function testFullSearch() {
+            const query = document.getElementById('fullSearchInput').value;
+            if (!query) { alert('Enter a search query'); return; }
+            
+            showResult('fullSearchResult', '', true, true);
+            
+            fetch(getApiBase() + '/debug/test-spotify-search/' + encodeURIComponent(query))
+                .then(r => r.json())
+                .then(data => showResult('fullSearchResult', data, true))
+                .catch(e => showResult('fullSearchResult', 'Error: ' + e.message, false));
+        }
+        
+        // Auto-check status on page load
+        window.addEventListener('load', checkStatus);
+    </script>
+</body>
+</html>

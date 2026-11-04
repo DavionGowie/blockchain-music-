@@ -1,0 +1,301 @@
+<!doctype html>
+    <html lang="en">
+    <head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <meta name="description" content="Web3 Music App: browse, play, buy, and download music with blockchain integration.">
+    <link rel="stylesheet" type="text/css" href="css/main.css">
+    <script>
+    // If opened via file://, redirect to Flask server where search works
+    if (window.location.protocol === 'file:') {
+        var currentHost = window.location.hostname || 'localhost';
+        var currentPort = window.location.port || '5000';
+        window.location.replace('http://' + currentHost + ':' + currentPort + '/index.html');
+    }
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/ethers@6.7.0/dist/ethers.umd.min.js" defer></script>
+    <script src="wallet-session-check.js" defer></script>
+        <script src="app.js?v=20260706i" defer></script>
+    <script>
+    var _artistTracks = [];
+    var _visibleCount = 10;
+    var _artistApiBase = null;
+
+    function timeoutSignal(ms) {
+        var controller = new AbortController();
+        var timer = setTimeout(function () { controller.abort(); }, ms || 1200);
+        return {
+            signal: controller.signal,
+            clear: function () { clearTimeout(timer); }
+        };
+    }
+
+    async function isHealthyApi(base) {
+        var timeout = timeoutSignal(1200);
+        try {
+            var res = await fetch(base + '/health', { method: 'GET', signal: timeout.signal });
+            return res.ok;
+        } catch (e) {
+            return false;
+        } finally {
+            timeout.clear();
+        }
+    }
+
+    async function getArtistApiBase() {
+        if (_artistApiBase) {
+            return _artistApiBase;
+        }
+
+        var saved = localStorage.getItem('API_BASE');
+        if (saved && await isHealthyApi(saved)) {
+            _artistApiBase = saved;
+            return _artistApiBase;
+        }
+
+        var candidates = [
+            window.location.protocol + '//' + window.location.hostname + ':5000',
+            window.location.protocol + '//' + window.location.hostname + ':5004',
+            'http://127.0.0.1:5000',
+            'http://127.0.0.1:5004',
+            'http://127.0.0.1:5001',
+            'http://127.0.0.1:5002',
+            'http://127.0.0.1:5003',
+            'http://127.0.0.1:5005'
+        ];
+
+        for (var i = 0; i < candidates.length; i++) {
+            if (await isHealthyApi(candidates[i])) {
+                _artistApiBase = candidates[i];
+                localStorage.setItem('API_BASE', _artistApiBase);
+                return _artistApiBase;
+            }
+        }
+
+        _artistApiBase = 'http://127.0.0.1:5000';
+        return _artistApiBase;
+    }
+
+    function toggleMoreTracks(btn) {
+        var extras = document.querySelectorAll('.artist-extra-track');
+        var expanded = btn.getAttribute('data-expanded') === 'true';
+        if (!expanded) {
+            extras.forEach(function(el){ el.style.display = 'flex'; });
+            btn.textContent = 'Show less';
+            btn.setAttribute('data-expanded', 'true');
+        } else {
+            extras.forEach(function(el){ el.style.display = 'none'; });
+            btn.textContent = 'Show more (' + extras.length + ' more)';
+            btn.setAttribute('data-expanded', 'false');
+        }
+    }
+
+    async function artistSearch() {
+        var query = (document.getElementById('spotifyArtistSearch').value || '').trim();
+        if (!query) { alert('Enter an artist name to search.'); return; }
+        var lib = document.getElementById('artistLibrary');
+        lib.innerHTML = '<p style="padding:16px;color:#555;">Searching for &quot;' + query + '&quot;...</p>';
+        try {
+            var apiBase = await getArtistApiBase();
+            var apiUrl = apiBase + '/spotify/artist?artist=' + encodeURIComponent(query);
+            var r = await fetch(apiUrl);
+            var raw = await r.text();
+            if(!r.ok) throw new Error('HTTP ' + r.status + ': ' + raw.slice(0, 120));
+
+            var d;
+            try {
+                d = JSON.parse(raw);
+            } catch (jsonError) {
+                throw new Error('Invalid API response from ' + apiBase + '.');
+            }
+
+            if (!d.tracks || !d.tracks.length) {
+                lib.innerHTML = '<p style="padding:16px;">No tracks found for &quot;'+(d.name||query)+'&quot;.</p>'; return;
+            }
+            var total = d.tracks.length;
+            var h = '<h3 style="margin:0 0 16px;">'+(d.name||query)+' &mdash; '+total+' tracks</h3>';
+            d.tracks.forEach(function(t, i){
+                var img = (t.album&&t.album.image) ? '<img src="'+t.album.image+'" style="width:80px;height:80px;object-fit:cover;border-radius:8px;flex-shrink:0;">' : '<div style="width:80px;height:80px;background:#e0e0e0;border-radius:8px;flex-shrink:0;"></div>';
+                var atype = (t.album&&t.album.type&&t.album.type.toLowerCase()==='single') ? 'Single' : 'Album';
+                var aname = (t.album&&t.album.name)||'Unknown';
+                var extraClass = '';
+                var extraStyle = 'display:flex;';
+                h += '<div class="artist-track-row'+extraClass+'" style="'+extraStyle+'gap:12px;align-items:center;margin-bottom:10px;padding:10px;border:1px solid #ddd;border-radius:10px;background:#fafafa;">';
+                h += img+'<div style="flex:1;">';
+                h += '<div style="font-weight:700;margin-bottom:3px;">'+(t.name||'Unknown')+'</div>';
+                h += '<div style="font-size:.88em;color:#666;margin-bottom:8px;">'+atype+': '+aname+'</div>';
+                h += '<button type="button" onclick="initialiseSong(\''+encodeURIComponent(t.id||'')+'\',' +
+                     '\''+encodeURIComponent(t.name||'')+'\',' +
+                     '\''+encodeURIComponent(d.name||'')+'\')" '+
+                     'style="background:#1db954;color:#fff;border:none;padding:6px 14px;border-radius:6px;cursor:pointer;font-weight:600;font-size:.9em;">Initialise</button>';
+                h += '</div></div>';
+            });
+            lib.innerHTML = h;
+            lib.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        } catch (e) {
+            lib.innerHTML = '<p style="color:red;padding:16px;border:1px solid #f99;border-radius:8px;">Error: '+e.message+'<br>Make sure Flask is running and reachable on localhost.</p>';
+        }
+    }
+    function initialiseSong(trackId, trackName, artistName) {
+        trackId = decodeURIComponent(trackId);
+        trackName = decodeURIComponent(trackName);
+        artistName = decodeURIComponent(artistName);
+        if (typeof connectSpotifyInitialise === 'function') {
+            connectSpotifyInitialise(trackId, trackName, artistName);
+        } else if (typeof connectSpotifyChannel === 'function') {
+            connectSpotifyChannel(trackId, artistName);
+        } else {
+            alert('Initialise: ' + trackName + ' by ' + artistName + ' (ID: ' + trackId + ')');
+        }
+    }
+    // Override app.js's searchSpotifyArtist so both event listeners call the same function
+    window.searchSpotifyArtist = artistSearch;
+    </script>
+    <title>Blochchain | Smart_Music | Live Chatroom</title>
+    </head> 
+
+    <body>
+        <header>
+            <div id="Logo">
+                <img src="img/blochchain-music-smart.jpeg">
+                <h2>BlockChain | Music-Smart</h2>
+            </div>
+            <nav>
+                <div id="nav">
+                    <ul>
+                        <li><a href="/index.html">Browse</a></li>
+                        <li><a href="/analysis.html">Analysis</a></li>
+                        <li><a href="/Profile.html">Profile</a></li>
+                        <li><a href="/login.html">Login</a></li>
+                        <li><a href="/logout.html">Logout</a></li>
+                    </ul>
+                    
+                </div>
+            </nav>
+                <div>
+                    <button id="connectBtn">Connect Wallet</button>
+                         <p id="walletAddress"></p>
+                </div>
+        </header>
+     
+        <section id="banner">
+            <div id="br">
+                <h3>Your Solution is here!!!</h3>
+                <H4>Blockchain | SmartMusic Platform, is your place to be.</H4>
+                <p>Step into the future of music with our blockchain-powered application.
+                    <br> Discover a seamless platform where artists and fans connect directly,
+                </br> ensuring fair payments, transparent royalties, and secure digital ownership.
+                <br> Stream, buy, and invest in music using cutting-edge technology, while enjoying
+            </br> fast transactions and real-time revenue sharing. Built with smart contracts and decentralized storage,
+            <br> this app redefines how music is created, distributed, and monetized in the digital age, empowering creators </br>
+             and delivering true value to every listener worldwide.
+                </p>
+            </div>
+            <div id="bpic">
+                <img src="img/music-imagery-dark-colour.jpg">
+            </div>
+        </section>
+
+   
+ <section class="spotify-artist-section">
+            <h2>Spotify Artist Content</h2>
+            <div class="search-container">
+                <input type="text" id="spotifyArtistSearch" placeholder="Spotify artist name or ID">
+                <button id="connectSpotifyArtistBtn" type="button">Search Artist</button>
+            </div>
+            <div id="artistLibrary"></div>
+            <div id="songs"></div>
+        </section>
+
+       
+
+ <section class="spotify-section">
+        <h2>Listen & Invest in This Track</h2>
+
+        <div class="spotify-container">
+            <iframe
+            id="platformPlayerIframe"
+            class="spotify-iframe"
+            title="Platform music player"
+            src="about:blank"
+            width="100%"
+            height="380"
+            frameborder="0"
+            allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture">
+            </iframe>
+        </div>
+        <audio id="platformPreviewAudio" preload="auto" crossorigin="anonymous" style="width:100%; display:none; margin-bottom:8px;"></audio>
+        <div id="platformCoverArtPanel" class="platform-cover-art" style="display:none;">
+            <img id="platformCoverArtImage" src="" alt="Current song cover art" />
+        </div>
+
+        <p id="platformNowPlaying" style="font-weight:600; margin:10px 0 16px 0;">Now playing: Platform default track</p>
+        <div class="platform-player-controls">
+            <button id="platformPlayBtn" type="button">Play</button>
+            <button id="platformPauseBtn" type="button">Pause</button>
+            <button id="platformStopBtn" type="button">Stop</button>
+            <button id="platformPrevBtn" type="button">Previous</button>
+            <button id="platformNextBtn" type="button">Next</button>
+            <button id="platformRewindBtn" type="button">Rewind 10s</button>
+            <button id="platformFastForwardBtn" type="button">Fast Forward 10s</button>
+            <button id="platformShuffleBtn" type="button">Shuffle: Off</button>
+            <button id="platformRepeatBtn" type="button">Repeat: Off</button>
+            <span id="platformQueueMeta">Queue: 0 tracks</span>
+        </div>
+
+        <div id="platformApprovedSongsPlayerList" class="platform-approved-song-list"></div>
+    
+    <div id="artistLibrarySecondary"></div>
+
+        <div class="invest-section">
+            <p>Your fan listening list appears below. Only initialised songs are shown across songs, artists, investments, downloaded songs, and downloaded albums views.</p>
+            <div id="initialisedSongsList"></div>
+            <p id="status"></p>
+
+            <div class="library-controls" style="margin-top:14px;">
+                <button id="loadArtistsBtn" type="button">View Artists</button>
+            </div>
+
+            <div id="library"></div>
+
+            <div id="investmentSection">
+                <h2>My Investments</h2>
+                <div id="investmentList"></div>
+            </div>
+
+            <div class="downloaded-songs" id="downloadedSongsSection">
+                <h2>Downloaded Songs</h2>
+                <div id="downloadedSongsList"></div>
+            </div>
+
+            <div class="downloaded-albums" id="downloadedAlbumsSection">
+                <h2>Downloaded Albums</h2>
+                <div id="downloadedAlbumsList"></div>
+            </div>
+        </div>
+
+     </section>
+    
+    
+
+
+<Footer>
+    <div class="footer1">
+        <img src="img/blochchain-music-smart.jpeg">
+        <h2>davionlg@yahoo.co.uk</h2>
+        <p> ** Cricklewood Broadway <br>london NW** *JG <br> Contact No: 07964815118</p>
+        <p>copyright &#169; 2026 all right reserve | Singer/ Davion Gowie</p>
+     </div>
+     <div id="Lsocial">
+            <a href="https://www.facebook.com/profile.php?id=100010061956882"><img src="img/fb.png"></a>
+            <a href="https://www.instagram.com/dsignaturemillionmiles/"><img src="img/Instagram-logo.png"></a>
+            <a href="https://www.linkedin.com/in/davion-gowie-ba614710a/"><img src="img/linkedin-logo.png"></a>
+     </div>
+</Footer>
+    </body>
+</html>
+

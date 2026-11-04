@@ -1,0 +1,5 @@
+{
+  "name": "My Song",
+  "description": "Music NFT",
+  "animation_url": "ipfs://<MUSIC_CID>"
+}

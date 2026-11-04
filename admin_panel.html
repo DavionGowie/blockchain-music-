@@ -1,0 +1,522 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Admin Panel | Music Smart</title>
+    <link rel="stylesheet" type="text/css" href="css/main.css">
+</head>
+<body>
+    <header>
+        <div id="Logo">
+            <img src="img/blochchain-music-smart.jpeg" alt="Music Smart Logo">
+            <h2>Admin Panel</h2>
+        </div>
+    </header>
+
+    <main class="page-center">
+        <div class="login-container">
+            <div class="lookup-action" style="margin-bottom: 20px; display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap;">
+                <button id="refreshBtn" class="lookup-button">Refresh List</button>
+                <button id="logoutBtn" class="lookup-button" style="background-color:#c12c2c;">Logout</button>
+            </div>
+            <div id="adminMessage" style="text-align:center;margin-bottom:16px;"></div>
+            <div style="display:flex;gap:18px;align-items:flex-start;">
+                <div style="flex:1;">
+                    <h3>Songs Awaiting Review</h3>
+                    <div id="pendingSongsContainer" class="registration-wrapper" style="margin-bottom:22px;"></div>
+                </div>
+                <div style="width:420px;">
+                    <h3>Contract Song Deletion</h3>
+                    <div style="border:1px solid #ddd;border-radius:8px;padding:10px;margin-bottom:14px;background:#fafafa;">
+                        <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;">
+                            <input id="contractSongIdInput" type="number" min="1" placeholder="Contract Song ID (e.g. 27)" style="flex:1;padding:6px;" />
+                        </div>
+                        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                            <button id="contractDeleteBtn" class="lookup-button" style="background:#c12c2c;">Delete Contract Song</button>
+                            <button id="contractRestoreBtn" class="lookup-button" style="background:#2f8f3f;">Restore Contract Song</button>
+                            <button id="contractRefreshBtn" class="lookup-button">Refresh Deleted IDs</button>
+                        </div>
+                        <p id="contractSongMessage" style="margin:10px 0 8px 0;"></p>
+                        <div id="contractDeletedList" style="max-height:180px;overflow:auto;border-top:1px solid #ddd;padding-top:8px;"></div>
+                    </div>
+
+                    <h3>ID Submissions</h3>
+                    <div style="display:flex;gap:6px;margin-bottom:8px;">
+                        <input id="idSearch" type="text" placeholder="Search id number or wallet" style="flex:1;padding:6px;" />
+                        <button id="idSearchBtn" class="lookup-button">Search</button>
+                    </div>
+                    <div id="idSubmissionsContainer" class="registration-wrapper"></div>
+                    <div style="display:flex;gap:8px;justify-content:space-between;margin-top:8px;">
+                        <button id="idPrevBtn" class="lookup-button">Prev</button>
+                        <div id="idPageInfo" style="align-self:center">Page 1</div>
+                        <button id="idNextBtn" class="lookup-button">Next</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        function getApiBaseCandidates() {
+            const bases = [];
+            bases.push('http://127.0.0.1:5000');
+            bases.push('http://localhost:5000');
+
+            const saved = localStorage.getItem('API_BASE');
+            if (saved) {
+                try {
+                    bases.push(new URL(saved, window.location.origin).origin);
+                } catch (_) {
+                    // ignore malformed saved value
+                }
+            }
+
+            bases.push(window.location.origin);
+            return [...new Set(bases)];
+        }
+
+        const API_BASE_CANDIDATES = getApiBaseCandidates();
+        let API_BASE = API_BASE_CANDIDATES[0] || 'http://127.0.0.1:5000';
+        const pendingContainer = document.getElementById('pendingSongsContainer');
+        const refreshBtn = document.getElementById('refreshBtn');
+        const logoutBtn = document.getElementById('logoutBtn');
+        const adminMessage = document.getElementById('adminMessage');
+
+        function getToken() {
+            return localStorage.getItem('adminToken');
+        }
+
+        function redirectToLogin() {
+            localStorage.removeItem('adminToken');
+            window.location.href = 'admin_login.html';
+        }
+
+        async function requestJson(path, options = {}) {
+            let lastError = null;
+
+            for (const base of API_BASE_CANDIDATES) {
+                try {
+                    const response = await fetch(`${base}${path}`, options);
+                    const contentType = response.headers.get('content-type') || '';
+                    const data = contentType.includes('application/json')
+                        ? await response.json()
+                        : { message: await response.text() };
+
+                    if (response.ok || response.status === 401 || response.status === 403) {
+                        API_BASE = base;
+                        localStorage.setItem('API_BASE', base);
+                        return { response, data, base };
+                    }
+
+                    lastError = new Error(data.message || `Request failed with ${response.status}`);
+                } catch (error) {
+                    lastError = error;
+                }
+            }
+
+            throw lastError || new Error('Unable to contact the backend.');
+        }
+
+        function renderSongCards(target, songs, emptyMessage, actionMode) {
+            if (!target) return;
+
+            if (!songs.length) {
+                target.innerHTML = `<p>${emptyMessage}</p>`;
+                return;
+            }
+
+            const formatList = (value) => Array.isArray(value) ? value.join(', ') : (value || 'N/A');
+            target.innerHTML = songs.map(song => {
+                const statusLabel = song.status || 'approved';
+                const canApprove = statusLabel !== 'deleted';
+                const canReject = statusLabel !== 'deleted';
+                const canDelete = statusLabel !== 'deleted';
+                const approveLabel = statusLabel === 'approved' ? 'Approve' : 'Approve';
+                const rejectLabel = statusLabel === 'approved' ? 'Reject' : 'Reject';
+
+                return `
+                    <div class="registration-card" data-song-id="${song.id}">
+                        <h3>${song.songTitle || 'Untitled song'}</h3>
+                        <p><strong>Status:</strong> ${statusLabel}</p>
+                        <p><strong>Artist:</strong> ${formatList(song.artistNames || song.artistName)}</p>
+                        <p><strong>Writer:</strong> ${formatList(song.writerNames || song.writerName)}</p>
+                        <p><strong>Society:</strong> ${song.collectionSociety || 'N/A'}</p>
+                        <p><strong>CAE / IPI:</strong> ${song.caeIpi || 'N/A'}</p>
+                        <p><strong>ISRC:</strong> ${song.isrc || 'N/A'}</p>
+                        <p><strong>Publisher:</strong> ${song.publisher || 'N/A'}</p>
+                        <p><strong>Registered at:</strong> ${song.registered_at ? new Date(song.registered_at * 1000).toLocaleString() : 'N/A'}</p>
+                        ${song.reviewed_by ? `<p><strong>Reviewed by:</strong> ${song.reviewed_by}</p>` : ''}
+                        ${song.review_reason ? `<p><strong>Review note:</strong> ${song.review_reason}</p>` : ''}
+                        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;">
+                            ${canApprove ? `<button type="button" data-song-action="approve" data-song-id="${song.id}">${approveLabel}</button>` : ''}
+                            ${canReject ? `<button type="button" data-song-action="reject" data-song-id="${song.id}" style="background:#c58a00;color:#fff;">${rejectLabel}</button>` : ''}
+                            ${canDelete ? `<button type="button" data-song-action="delete" data-song-id="${song.id}" style="background:#c12c2c;color:#fff;">Delete</button>` : ''}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        async function loadSongReviewLists() {
+            const token = getToken();
+            if (!token) {
+                redirectToLogin();
+                return;
+            }
+
+            if (pendingContainer) pendingContainer.innerHTML = '<p>Loading...</p>';
+            adminMessage.textContent = '';
+
+            try {
+                const pendingResult = await requestJson('/admin/song_registrations?status=pending', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (pendingResult.response.status === 401 || pendingResult.response.status === 403) {
+                    redirectToLogin();
+                    return;
+                }
+                const pendingSongs = pendingResult.data.songs || [];
+
+                adminMessage.textContent = `Loaded ${pendingSongs.length} pending song(s) for review.`;
+                renderSongCards(pendingContainer, pendingSongs, 'No songs waiting for review.', 'pending');
+            } catch (error) {
+                const message = error && error.message ? error.message : 'Unable to contact the backend.';
+                if (pendingContainer) pendingContainer.innerHTML = `<p class="registration-status error">${message}</p>`;
+                console.error(error);
+            }
+        }
+
+        async function handleSongAction(songId, action) {
+            const token = getToken();
+            if (!token) {
+                redirectToLogin();
+                return;
+            }
+
+            try {
+                let endpoint = '/admin/song_approve';
+                let body = { id: songId };
+
+                if (action === 'reject') {
+                    const reason = prompt('Rejection reason (optional)') || '';
+                    endpoint = '/admin/song_reject';
+                    body = { id: songId, reason: reason };
+                } else if (action === 'delete') {
+                    if (!confirm('Delete this song record?')) return;
+                    endpoint = '/admin/song_delete';
+                } else if (!confirm('Approve this song for the registered list?')) {
+                    return;
+                }
+
+                const result = await requestJson(endpoint, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                    body: JSON.stringify(body)
+                });
+
+                if (result.response.status === 401 || result.response.status === 403) {
+                    redirectToLogin();
+                    return;
+                }
+
+                if (!result.response.ok) {
+                    alert(result.data.message || 'Song action failed.');
+                    return;
+                }
+
+                await loadSongReviewLists();
+            } catch (error) {
+                alert(error.message || 'Song action failed.');
+            }
+        }
+
+        async function loadDeletedContractSongs() {
+            const token = getToken();
+            if (!token) {
+                redirectToLogin();
+                return;
+            }
+
+            const container = document.getElementById('contractDeletedList');
+            if (!container) return;
+            container.innerHTML = '<p>Loading...</p>';
+
+            try {
+                const result = await requestJson('/admin/contract_song_deletions', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
+                if (result.response.status === 401 || result.response.status === 403) {
+                    redirectToLogin();
+                    return;
+                }
+
+                const songs = result.data.songs || [];
+                if (!songs.length) {
+                    container.innerHTML = '<p>No deleted contract song IDs.</p>';
+                    return;
+                }
+
+                container.innerHTML = songs.map(item => `
+                    <div style="padding:6px 0;border-bottom:1px solid #eee;">
+                        <div><strong>Song ID:</strong> ${item.song_id}</div>
+                        <div style="font-size:0.9em;color:#555;"><strong>By:</strong> ${item.deleted_by || 'ADMIN'}</div>
+                        <div style="font-size:0.9em;color:#555;"><strong>Reason:</strong> ${item.reason || 'N/A'}</div>
+                        <div style="font-size:0.85em;color:#777;">${item.deleted_at ? new Date(item.deleted_at * 1000).toLocaleString() : ''}</div>
+                    </div>
+                `).join('');
+            } catch (error) {
+                container.innerHTML = `<p class="registration-status error">${error.message || 'Failed to load deleted contract songs.'}</p>`;
+            }
+        }
+
+        async function contractSongAction(action) {
+            const token = getToken();
+            if (!token) {
+                redirectToLogin();
+                return;
+            }
+
+            const input = document.getElementById('contractSongIdInput');
+            const messageEl = document.getElementById('contractSongMessage');
+            const songId = Number(input?.value || 0);
+            if (!songId || songId <= 0) {
+                if (messageEl) messageEl.textContent = 'Enter a valid contract song ID.';
+                return;
+            }
+
+            if (action === 'delete' && !confirm(`Delete contract song ID ${songId} from platform view?`)) {
+                return;
+            }
+            if (action === 'restore' && !confirm(`Restore contract song ID ${songId}?`)) {
+                return;
+            }
+
+            let endpoint = '/admin/contract_song_delete';
+            let body = { song_id: songId };
+            if (action === 'delete') {
+                const reason = prompt('Deletion reason (optional)') || '';
+                body.reason = reason;
+            }
+            if (action === 'restore') {
+                endpoint = '/admin/contract_song_restore';
+            }
+
+            try {
+                const result = await requestJson(endpoint, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                    body: JSON.stringify(body)
+                });
+
+                if (result.response.status === 401 || result.response.status === 403) {
+                    redirectToLogin();
+                    return;
+                }
+
+                if (!result.response.ok) {
+                    if (messageEl) messageEl.textContent = result.data.message || 'Action failed.';
+                    return;
+                }
+
+                if (messageEl) messageEl.textContent = result.data.message || 'Done.';
+                loadDeletedContractSongs();
+            } catch (error) {
+                if (messageEl) messageEl.textContent = error.message || 'Action failed.';
+            }
+        }
+
+        let idPage = 1;
+        const idPageSize = 8;
+        const HIDDEN_ID_SUBMISSIONS_KEY = 'admin_hidden_id_submissions';
+
+        function getHiddenIdSubmissions() {
+            try {
+                const raw = localStorage.getItem(HIDDEN_ID_SUBMISSIONS_KEY);
+                if (!raw) return new Set();
+                const parsed = JSON.parse(raw);
+                if (!Array.isArray(parsed)) return new Set();
+                return new Set(parsed.map(v => String(v || '').trim()).filter(Boolean));
+            } catch (_) {
+                return new Set();
+            }
+        }
+
+        function saveHiddenIdSubmissions(hiddenSet) {
+            try {
+                localStorage.setItem(HIDDEN_ID_SUBMISSIONS_KEY, JSON.stringify(Array.from(hiddenSet)));
+            } catch (_) {
+                // ignore storage failures
+            }
+        }
+
+        function markIdSubmissionHidden(id) {
+            const safeId = String(id || '').trim();
+            if (!safeId) return;
+            const hidden = getHiddenIdSubmissions();
+            hidden.add(safeId);
+            saveHiddenIdSubmissions(hidden);
+        }
+
+        function isIdSubmissionHidden(id) {
+            const safeId = String(id || '').trim();
+            if (!safeId) return false;
+            return getHiddenIdSubmissions().has(safeId);
+        }
+
+        async function loadIdSubmissions(page = 1, q = '') {
+            const token = getToken(); if (!token) { redirectToLogin(); return; }
+            idPage = page;
+            const out = document.getElementById('idSubmissionsContainer');
+            const pageInfo = document.getElementById('idPageInfo');
+            out.innerHTML = '<p>Loading...</p>';
+            pageInfo.textContent = `Page ${page}`;
+            try {
+                const url = new URL(`${API_BASE}/admin/id_submissions`);
+                url.searchParams.set('page', page);
+                url.searchParams.set('page_size', idPageSize);
+                if (q) url.searchParams.set('q', q);
+                const res = await fetch(url.toString(), { headers: { 'Authorization': `Bearer ${token}` } });
+                if (!res.ok) { out.innerHTML = '<p class="registration-status error">Failed to load ID submissions.</p>'; return; }
+                const j = await res.json();
+                pageInfo.textContent = `Page ${j.page} / ${Math.max(1, Math.ceil((j.count||0)/j.page_size))}`;
+                const visibleSubmissions = (j.submissions || []).filter(s => !isIdSubmissionHidden(s.id));
+                if (!visibleSubmissions.length) { out.innerHTML = '<p>No submissions.</p>'; return; }
+                out.innerHTML = visibleSubmissions.map(s => `
+                    <div class="registration-card" id="id-${s.id}">
+                        <p><strong>ID:</strong> ${s.id}</p>
+                        <p><strong>Type:</strong> ${s.id_type || 'national_id'}</p>
+                        <p><strong>Number:</strong> ${s.id_number}</p>
+                        <p><strong>Wallet:</strong> ${s.user_address || 'N/A'}</p>
+                        <p><strong>Submitted:</strong> ${new Date(s.submitted_at*1000).toLocaleString()}</p>
+                        <p><strong>Status:</strong> ${s.status}</p>
+                        ${(Array.isArray(s.documents) && s.documents.length > 1) ? `<p><strong>Files:</strong> ${s.documents.length} uploaded</p>` : ''}
+                        <div style="display:flex;gap:8px;">
+                            <button onclick="downloadFile('${s.id}')">Download File</button>
+                            ${(Array.isArray(s.documents) && s.documents.length > 1) ? s.documents.map((_, idx) => `<button onclick="downloadFile('${s.id}', ${idx})">Download #${idx + 1}</button>`).join('') : ''}
+                            <button onclick="approveId('${s.id}')">Approve</button>
+                            <button onclick="rejectId('${s.id}')" style="background:#c12c2c;color:#fff">Reject</button>
+                            <button onclick="deleteId('${s.id}')" style="background:#7f1d1d;color:#fff">Delete</button>
+                        </div>
+                    </div>
+                `).join('');
+            } catch (e) { out.innerHTML = '<p class="registration-status error">Error loading submissions.</p>'; console.error(e); }
+        }
+
+        async function approveId(id) {
+            const token = getToken(); if (!token) { redirectToLogin(); return; }
+            if (!confirm('Approve this ID submission?')) return;
+            try {
+                const res = await fetch(`${API_BASE}/id/approve`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                    body: JSON.stringify({ id: id })
+                });
+                const j = await res.json();
+                if (!res.ok) { alert(j.error || 'Approve failed'); return; }
+                alert('Approved');
+                loadIdSubmissions(idPage, document.getElementById('idSearch').value.trim());
+            } catch (e) { console.error(e); alert('Approve failed'); }
+        }
+
+        async function rejectId(id) {
+            const token = getToken(); if (!token) { redirectToLogin(); return; }
+            const reason = prompt('Rejection reason (optional)');
+            if (!confirm('Reject this ID submission?')) return;
+            try {
+                const res = await fetch(`${API_BASE}/id/reject`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                    body: JSON.stringify({ id: id, reason: reason })
+                });
+                const j = await res.json();
+                if (!res.ok) { alert(j.error || 'Reject failed'); return; }
+                alert('Rejected');
+                loadIdSubmissions(idPage, document.getElementById('idSearch').value.trim());
+            } catch (e) { console.error(e); alert('Reject failed'); }
+        }
+
+        async function deleteId(id) {
+            const token = getToken(); if (!token) { redirectToLogin(); return; }
+            if (!confirm('Delete this ID submission? This removes it from admin list.')) return;
+            try {
+                // Use stable endpoint path that is available in current backend.
+                const result = await requestJson('/id/reject', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                    body: JSON.stringify({ id: id, reason: 'Deleted by admin' })
+                });
+
+                if (result.response.status === 401 || result.response.status === 403) {
+                    redirectToLogin();
+                    return;
+                }
+                if (!result.response.ok) {
+                    alert(result.data.error || result.data.message || 'Delete failed');
+                    return;
+                }
+                alert('Deleted');
+                markIdSubmissionHidden(id);
+                const card = document.getElementById(`id-${id}`);
+                if (card) {
+                    card.remove();
+                }
+                loadIdSubmissions(idPage, document.getElementById('idSearch').value.trim());
+            } catch (e) {
+                console.error('Delete failed details:', e);
+                alert(`Delete failed: ${e && e.message ? e.message : 'Unknown error'}`);
+            }
+        }
+
+        async function downloadFile(id, docIndex = 0) {
+            const token = getToken(); if (!token) { redirectToLogin(); return; }
+            try {
+                const res = await fetch(`${API_BASE}/admin/id_file/${id}?doc_index=${encodeURIComponent(String(docIndex || 0))}`, { headers: { 'Authorization': `Bearer ${token}` } });
+                const contentType = res.headers.get('content-type') || '';
+                if (contentType.includes('application/json')) {
+                    const j = await res.json();
+                    if (j.url) { window.open(j.url, '_blank'); return; }
+                    alert(j.message || 'No download URL');
+                    return;
+                }
+                const blob = await res.blob();
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'id_document';
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                URL.revokeObjectURL(url);
+            } catch (e) { console.error(e); alert('Download failed'); }
+        }
+
+        if (pendingContainer) {
+            pendingContainer.addEventListener('click', function (event) {
+                const button = event.target.closest('[data-song-action]');
+                if (!button) return;
+                handleSongAction(button.getAttribute('data-song-id'), button.getAttribute('data-song-action'));
+            });
+        }
+
+        document.getElementById('idSearchBtn').addEventListener('click', function(){ loadIdSubmissions(1, document.getElementById('idSearch').value.trim()); });
+        document.getElementById('idPrevBtn').addEventListener('click', function(){ if (idPage>1) loadIdSubmissions(idPage-1, document.getElementById('idSearch').value.trim()); });
+        document.getElementById('idNextBtn').addEventListener('click', function(){ loadIdSubmissions(idPage+1, document.getElementById('idSearch').value.trim()); });
+
+        document.getElementById('contractDeleteBtn')?.addEventListener('click', function(){ contractSongAction('delete'); });
+        document.getElementById('contractRestoreBtn')?.addEventListener('click', function(){ contractSongAction('restore'); });
+        document.getElementById('contractRefreshBtn')?.addEventListener('click', function(){ loadDeletedContractSongs(); });
+
+        refreshBtn.addEventListener('click', () => { loadSongReviewLists(); loadIdSubmissions(); loadDeletedContractSongs(); });
+        logoutBtn.addEventListener('click', async function () {
+            await fetch(`${API_BASE}/admin/logout`, { method: 'POST', credentials: 'include' });
+            redirectToLogin();
+        });
+        loadSongReviewLists();
+        loadIdSubmissions();
+        loadDeletedContractSongs();
+    </script>
+</body>
+</html>

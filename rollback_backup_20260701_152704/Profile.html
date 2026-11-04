@@ -1,0 +1,751 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="Web3 Music App: browse, play, buy, and download music with blockchain integration.">
+    <link rel="stylesheet" type="text/css" href="css/main.css">
+    <script src="https://cdn.jsdelivr.net/npm/ethers@6.7.0/dist/ethers.umd.min.js" defer></script>
+    <script src="app.js" defer></script>
+    <title>Blockchain | Smart_Music | Live Chatroom</title>
+</head>
+
+<body>
+        <header>
+            <div id="Logo">
+                <img src="img/blochchain-music-smart.jpeg">
+                <h2>BlockChain | Music-Smart</h2>
+            </div>
+            <nav>
+                <div id="nav">
+                    <ul>
+                        <li><a href="/index.html">Browse</a></li>
+                        <li><a href="/analysis.html">Analysis</a></li>
+                        <li><a href="/chatroom.html">Chatroom</a></li>
+                        <li><a href="/Profile.html">Profile</a></li>
+                        <li><a href="/login.html">Login</a></li>
+                        <li><a href="/logout.html">Logout</a></li>
+                    </ul>
+                    
+                </div>
+            </nav>
+                <div>
+                    <button id="connectBtn">Connect Wallet</button>
+                         <p id="walletAddress"></p>
+                </div>
+        </header>
+    <section id="banner">
+            <div id="br">
+                <H4>Here is your music Hub | Stream your music here</H4>
+                    <p>Welcome back to your personal music hub. Enjoy seamless playback 
+                        <br>with your currently playing track while exploring your full </br>
+                         library of songs, albums, artists, and playlists. Access your downloads
+                         <Br> anytime and stay connected to your favorite music in one place. </br>
+                         <br>Your profile is designed to give you full control, easy navigation, 
+                         </br> and a smooth listening experience tailored just for you.
+                    </p>
+            </div>
+            <div id="bpic">
+                <img src="img/music-imagery-dark-colour.jpg">
+            </div>
+    
+        </section>
+
+        <!-- ID VERIFICATION: prevents unverified users from uploading songs to blockchain -->
+        <section id="id-verification" style="margin:40px auto; max-width:800px; background:#fff; padding:18px; border-radius:8px; box-shadow:0 2px 8px rgba(0,0,0,0.05);">
+            <h2>ID Verification</h2>
+            <p>Please verify your identity before registering songs or uploading metadata to the blockchain. Verification is required to enable the song registration action.</p>
+            <div style="display:flex;flex-direction:column;gap:8px;">
+                <label for="idNumber">CAE / IPI / National ID</label>
+                <input id="idNumber" type="text" placeholder="Enter your CAE / IPI or ID number" style="padding:8px;" />
+
+                <label for="idDocument">Upload ID Document (photo/scan)</label>
+                <input id="idDocument" type="file" accept="image/*,application/pdf" />
+
+                <div style="display:flex;gap:8px;align-items:center;margin-top:8px;">
+                    <button id="verifyIdBtn" type="button" style="padding:8px 14px;background:#0b74de;color:#fff;border:none;border-radius:4px;cursor:pointer;">Verify ID</button>
+                    <button id="clearVerificationBtn" type="button" style="padding:8px 14px;background:#ddd;color:#111;border:none;border-radius:4px;cursor:pointer;">Clear</button>
+                    <span id="idVerificationStatus" style="margin-left:12px;color:#666"></span>
+                </div>
+            </div>
+        </section>
+
+ 
+
+        
+
+        <section class="spotify-artist-section">
+            <h2>Spotify Artist Content</h2>
+            <div class="search-container">
+                <input type="text" id="spotifyArtistSearch" placeholder="Spotify artist name or ID">
+                <button id="connectSpotifyArtistBtn">Search Artist</button>
+            </div>
+            <div id="artistLibrary"></div>
+            <div id="songs"></div>
+        </section>
+
+
+
+       
+
+        <section class="spotify-section">
+        <h2>Listen & Invest in This Track</h2>
+
+        <div class="spotify-container">
+            <iframe 
+            class="spotify-iframe"
+            title="Spotify track embed"
+            src="https://open.spotify.com/embed/track/11dFghVXANMlKmJXsNCbNl" 
+            width="300" 
+            height="380" 
+            frameborder="0"
+            allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture">
+            </iframe>
+        </div>
+
+
+    <div id="artistLibrarySecondary"></div>
+        
+
+        <div class="invest-section">
+            <p>Initialised songs will appear here for download rights, investment, and full rights purchases.</p>
+            <div id="initialisedSongsList"></div>
+            <p id="status"></p>
+        </div>
+        
+     </section>
+    
+        <section id="contact">
+          <aside class="sidebar">
+        <h2>Library</h2>
+        <ul>
+            <li>🎵 Songs</li>
+            <li>📀 Albums</li>
+            <li>🎤 Artists</li>
+            <li>📁 Playlists</li>
+        </ul>
+          </aside>
+        </section>
+
+        <section>
+        <h1>My Music Library 🎧</h1>
+        <div class="library-controls">
+            <button id="loadLibraryBtn">Load My Songs</button>
+            <button id="loadArtistsBtn">View Artists</button>
+            <button id="loadInvestmentsBtn">View Investments</button>
+            <button type="button" onclick="document.getElementById('downloadedSongsSection').scrollIntoView({ behavior: 'smooth' });">Downloaded Songs</button>
+            <button type="button" onclick="document.getElementById('downloadedAlbumsSection').scrollIntoView({ behavior: 'smooth' });">Downloaded Albums</button>
+        </div>
+        <div id="library"></div>
+        <div id="investmentSection">
+            <h2>My Investments</h2>
+            <div id="investmentList"></div>
+        </div>
+        <div class="downloaded-songs" id="downloadedSongsSection">
+            <h2>Downloaded Songs</h2>
+            <div class="card">
+                <h3>Downloaded Track 1</h3>
+                <p>Artist A</p>
+                <button>▶ Play</button>
+                <button onclick="downloadItem('Downloaded Track 1', 'song')">📥 Download</button>
+            </div>
+            <div class="card">
+                <h3>Downloaded Track 2</h3>
+                <p>Artist B</p>
+                <button>▶ Play</button>
+                <button onclick="downloadItem('Downloaded Track 2', 'song')">📥 Download</button>
+            </div>
+        </div>
+        <div class="downloaded-albums" id="downloadedAlbumsSection">
+            <h2>Downloaded Albums</h2>
+            <div class="card">
+                <h3>Album One</h3>
+                <p>Artist A</p>
+                <button onclick="playAlbum('Album One')">▶ Play Album</button>
+                <button onclick="downloadItem('Album One', 'album')">📥 Download Album</button>
+            </div>
+            <div class="card">
+                <h3>Album Two</h3>
+                <p>Artist B</p>
+                <button onclick="playAlbum('Album Two')">▶ Play Album</button>
+                <button onclick="downloadItem('Album Two', 'album')">📥 Download Album</button>
+            </div>
+        </div>
+        <div class="playlist-creator">
+            <h2>Create Your Download Playlist</h2>
+            <input type="text" id="profilePlaylistName" placeholder="Playlist name" />
+            <button type="button" onclick="createDownloadPlaylist('profilePlaylistName', 'profilePlaylistOutput')">Create Playlist</button>
+            <div id="profilePlaylistOutput"></div>
+        </div>
+        </section>
+
+
+         <section class="registration-section">
+            <h2>Song Registration for PRS / CAE / IPI / SESAC / ASCAP / BMI Pro</h2>
+            <div class="registration-wrapper">
+                <div class="registration-card">
+                    <form id="songRegistrationForm">
+                        <div class="registration-row">
+                            <label for="songTitle">Song Title <span style="color:red">*</span></label>
+                            <input id="songTitle" name="songTitle" type="text" placeholder="Song title" required>
+                        </div>
+                        <div class="registration-row">
+                            <label for="songFile">Upload Song File (mp3 or wav) <span style="color:red">*</span></label>
+                            <input id="songFile" name="songFile" type="file" accept="audio/mp3,audio/wav" required>
+                        </div>
+                        <div class="registration-row">
+                            <label>Artist Name <span style="color:red">*</span></label>
+                            <div id="artistsContainer" class="multi-input-group">
+                                <div class="multi-input-row">
+                                    <input class="artist-input" type="text" placeholder="Artist name" required>
+                                    <button type="button" id="addArtistBtn" class="lookup-button" style="margin-left:8px;">Add Artist</button>
+                                </div>
+                            </div>
+
+                            <label>Songwriter(s) <span style="color:red">*</span></label>
+                            <div id="writersContainer" class="multi-input-group">
+                                <div class="multi-input-row">
+                                    <label for="writer-name-0" style="margin-bottom:2px;">Writer Name <span style="color:red">*</span></label>
+                                    <input id="writer-name-0" class="writer-name" type="text" placeholder="Full name" required>
+                                    <label for="writer-share-0" style="margin-bottom:2px;">Share % <span style="color:red">*</span></label>
+                                    <input id="writer-share-0" class="writer-share" type="number" placeholder="Share %" min="0" max="100" required aria-required="true">
+                                    <label for="writer-society-0" style="margin-bottom:2px;">Society <span style="color:red">*</span></label>
+                                    <select id="writer-society-0" class="writer-society" required aria-required="true">
+                                        <option value="" disabled selected>Society</option>
+                                        <option value="PRS">PRS for Music</option>
+                                        <option value="SESAC">SESAC</option>
+                                        <option value="ASCAP">ASCAP</option>
+                                        <option value="BMI Pro">BMI Pro</option>
+                                        <option value="Other">Other</option>
+                                    </select>
+                                    <label for="writer-cae-0" style="margin-bottom:2px;">CAE / IPI Number <span style="color:red">*</span></label>
+                                    <input id="writer-cae-0" class="writer-cae" type="text" placeholder="CAE / IPI number" required aria-required="true">
+                                    <label for="writer-isrc-0" style="margin-bottom:2px;">ISRC Code</label>
+                                    <input id="writer-isrc-0" class="writer-isrc" type="text" placeholder="ISRC code" required>
+                                    <label for="writer-publisher-0" style="margin-bottom:2px;">Publisher / Label</label>
+                                    <input id="writer-publisher-0" class="writer-publisher" type="text" placeholder="Publisher or label name">
+                                    <button type="button" class="remove-row-btn">Delete</button>
+                                </div>
+                            </div>
+                            <p class="field-note">Each songwriter can have a different collection society. Split share must total 100% across all songwriters.</p>
+                        </div>
+                        <div class="registration-row">
+
+                        </div>
+                        <!-- Collection society now per-writer -->
+                        <script>
+                                                // Add Artist button logic for dynamic artist rows
+                                                document.addEventListener('DOMContentLoaded', function () {
+                                                    const artistsContainer = document.getElementById('artistsContainer');
+                                                    const addArtistBtn = document.getElementById('addArtistBtn');
+                                                    if (artistsContainer && addArtistBtn) {
+                                                        addArtistBtn.addEventListener('click', function () {
+                                                            const row = document.createElement('div');
+                                                            row.className = 'multi-input-row';
+                                                            row.innerHTML = `<input class="artist-input" type="text" placeholder="Artist name" required> <button type="button" class="remove-artist-btn" style="margin-left:8px;">Delete</button>`;
+                                                            artistsContainer.appendChild(row);
+                                                        });
+                                                        artistsContainer.addEventListener('click', function (e) {
+                                                            if (e.target.classList.contains('remove-artist-btn')) {
+                                                                e.target.parentElement.remove();
+                                                            }
+                                                        });
+                                                    }
+                                                });
+                        // Add Writer button logic for dynamic songwriter rows with individual societies
+                        document.addEventListener('DOMContentLoaded', function () {
+                            const writersContainer = document.getElementById('writersContainer');
+                            const addWriterBtn = document.getElementById('addWriterBtn');
+                            if (writersContainer && addWriterBtn) {
+                                addWriterBtn.addEventListener('click', function () {
+                                    const row = document.createElement('div');
+                                    row.className = 'multi-input-row';
+                                    const idx = writersContainer.children.length;
+                                    row.innerHTML = `
+                                        <label for=\"writer-name-${idx}\" style=\"margin-bottom:2px;\">Writer Name <span style=\"color:red\">*</span></label>
+                                        <input id=\"writer-name-${idx}\" class=\"writer-name\" type=\"text\" placeholder=\"Full name\" required>
+                                        <label for=\"writer-share-${idx}\" style=\"margin-bottom:2px;\">Share % <span style=\"color:red\">*</span></label>
+                                        <input id=\"writer-share-${idx}\" class=\"writer-share\" type=\"number\" placeholder=\"Share %\" min=\"0\" max=\"100\" required aria-required=\"true\">
+                                        <label for=\"writer-society-${idx}\" style=\"margin-bottom:2px;\">Society <span style=\"color:red\">*</span></label>
+                                        <select id=\"writer-society-${idx}\" class=\"writer-society\" required aria-required=\"true\">
+                                            <option value=\"\" disabled selected>Society</option>
+                                            <option value=\"PRS\">PRS for Music</option>
+                                            <option value=\"SESAC\">SESAC</option>
+                                            <option value=\"ASCAP\">ASCAP</option>
+                                            <option value=\"BMI Pro\">BMI Pro</option>
+                                            <option value=\"Other\">Other</option>
+                                        </select>
+                                        <label for=\"writer-cae-${idx}\" style=\"margin-bottom:2px;\">CAE / IPI Number <span style=\"color:red\">*</span></label>
+                                        <input id=\"writer-cae-${idx}\" class=\"writer-cae\" type=\"text\" placeholder=\"CAE / IPI number\" required aria-required=\"true\">
+                                        <label for=\"writer-isrc-${idx}\" style=\"margin-bottom:2px;\">ISRC Code</label>
+                                        <input id=\"writer-isrc-${idx}\" class=\"writer-isrc\" type=\"text\" placeholder=\"ISRC code\" required>
+                                        <label for=\"writer-publisher-${idx}\" style=\"margin-bottom:2px;\">Publisher / Label</label>
+                                        <input id=\"writer-publisher-${idx}\" class=\"writer-publisher\" type=\"text\" placeholder=\"Publisher or label name\">
+                                        <button type=\"button\" class=\"remove-row-btn\">Delete</button>
+                                    `;
+                                    writersContainer.appendChild(row);
+                                });
+                                writersContainer.addEventListener('click', function (e) {
+                                    if (e.target.classList.contains('remove-row-btn')) {
+                                        e.target.parentElement.remove();
+                                    }
+                                });
+                            }
+                        });
+                        </script>
+                        <!-- CAE/IPI, ISRC, and Publisher are now per-writer -->
+                            <!-- CAE/IPI, ISRC, and Publisher are now per-writer -->
+                        <button type="submit">Register Song</button>
+                            <button type="button" id="addWriterBtn" class="lookup-button" style="margin-bottom:12px;">Add Writer</button>
+                        <p id="registrationStatus" class="registration-status"></p>
+                    </form>
+                </div>
+                <div class="registration-card registration-info">
+                    <h3>Why register your song?</h3>
+                    <p>Registering your song with PRS for Music helps protect your rights and ensure you receive royalties from performances and streams.</p>
+                    <ul>
+                        <li>Use your CAE/IPI to identify yourself as the composer/author.</li>
+                        <li>Include ISRC for the track to track usage across platforms.</li>
+                        <li>Registering properly improves rights management and payment accuracy.</li>
+                        <li><b>Now with IPFS:</b> Your song metadata is stored on the decentralized IPFS network. After registration, you will see the IPFS CID (hash) for your song's metadata.</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="lookup-action">
+                <a href="admin_login.html" class="lookup-button">Admin Panel</a>
+            </div>
+        </section>
+
+
+        <section id="admin-contact" style="margin: 40px auto; max-width: 600px; background: #f9f9f9; border-radius: 8px; padding: 24px; box-shadow: 0 2px 8px rgba(0,0,0,0.04);">
+                <!-- Wallet required message removed -->
+            <h2>Contact Admin</h2>
+            <form id="adminContactForm">
+                <div style="margin-bottom: 12px;">
+                    <label for="adminName">Your Name <span style="color:red">*</span></label><br>
+                    <input type="text" id="adminName" name="adminName" required style="width: 100%; padding: 8px;">
+                </div>
+                <div style="margin-bottom: 12px;">
+                    <label for="adminEmail">Your Email <span style="color:red">*</span></label><br>
+                    <input type="email" id="adminEmail" name="adminEmail" required style="width: 100%; padding: 8px;">
+                </div>
+                <div style="margin-bottom: 12px;">
+                    <label for="adminMessage">Message <span style="color:red">*</span></label><br>
+                    <textarea id="adminMessage" name="adminMessage" rows="4" required style="width: 100%; padding: 8px;"></textarea>
+                </div>
+                <button type="submit" style="padding: 10px 24px; background: #222; color: #fff; border: none; border-radius: 4px; cursor: pointer;">Send</button>
+                <p id="adminContactStatus" style="margin-top: 10px;"></p>
+            </form>
+        </section>
+    
+<footer>
+    <div class="footer1">
+        <img src="img/blochchain-music-smart.jpeg" alt="Blockchain Music Smart Logo">
+        <h2>davionlg@yahoo.co.uk</h2>
+        <p>Cricklewood Broadway<br>London NW** *JG<br>Contact No: 07964815118</p>
+        <p>&copy; 2026 All rights reserved | Singer: Davion Gowie</p>
+    </div>
+    <div id="Lsocial">
+        <a href="https://www.facebook.com/profile.php?id=100010061956882"><img src="img/fb-logo 011.png" alt="Facebook"></a>
+        <a href="https://www.instagram.com/dsignaturemillionmiles/"><img src="img/Instagram logo.png" alt="Instagram"></a>
+        <a href="https://www.linkedin.com/in/davion-gowie-ba614710a/"><img src="img/linkedin logo.png" alt="LinkedIn"></a>
+    </div>
+</footer>
+        <script>
+
+
+
+            const registrationForm = document.getElementById('songRegistrationForm');
+            const registrationStatus = document.getElementById('registrationStatus');
+            const artistsContainer = document.getElementById('artistsContainer');
+            const writersContainer = document.getElementById('writersContainer');
+            const addWriterBtn = document.getElementById('addWriterBtn');
+                        // Add Writer button logic for dynamic songwriter rows with individual societies
+                        document.addEventListener('DOMContentLoaded', function () {
+                            const writersContainer = document.getElementById('writersContainer');
+                            const addWriterBtn = document.getElementById('addWriterBtn');
+                            if (writersContainer && addWriterBtn) {
+                                addWriterBtn.addEventListener('click', function () {
+                                    const row = document.createElement('div');
+                                    row.className = 'multi-input-row';
+                                    const idx = writersContainer.children.length;
+                                    row.innerHTML = `
+                                        <label for="writer-name-${idx}" style="margin-bottom:2px;">Writer Name <span style="color:red">*</span></label>
+                                        <input id="writer-name-${idx}" class="writer-name" type="text" placeholder="Full name" required>
+                                        <label for="writer-share-${idx}" style="margin-bottom:2px;">Share % <span style="color:red">*</span></label>
+                                        <input id="writer-share-${idx}" class="writer-share" type="number" placeholder="Share %" min="0" max="100" required aria-required="true">
+                                        <label for="writer-society-${idx}" style="margin-bottom:2px;">Society <span style="color:red">*</span></label>
+                                        <select id="writer-society-${idx}" class="writer-society" required aria-required="true">
+                                            <option value="" disabled selected>Society</option>
+                                            <option value="PRS">PRS for Music</option>
+                                            <option value="SESAC">SESAC</option>
+                                            <option value="ASCAP">ASCAP</option>
+                                            <option value="BMI Pro">BMI Pro</option>
+                                            <option value="Other">Other</option>
+                                        </select>
+                                        <label for="writer-cae-${idx}" style="margin-bottom:2px;">CAE / IPI Number <span style="color:red">*</span></label>
+                                        <input id="writer-cae-${idx}" class="writer-cae" type="text" placeholder="CAE / IPI number" required aria-required="true">
+                                        <label for="writer-isrc-${idx}" style="margin-bottom:2px;">ISRC Code</label>
+                                        <input id="writer-isrc-${idx}" class="writer-isrc" type="text" placeholder="ISRC code" required>
+                                        <label for="writer-publisher-${idx}" style="margin-bottom:2px;">Publisher / Label</label>
+                                        <input id="writer-publisher-${idx}" class="writer-publisher" type="text" placeholder="Publisher or label name">
+                                        <button type="button" class="remove-row-btn">Delete</button>
+                                    `;
+                                    writersContainer.appendChild(row);
+                                });
+                                writersContainer.addEventListener('click', function (e) {
+                                    if (e.target.classList.contains('remove-row-btn')) {
+                                        e.target.parentElement.remove();
+                                    }
+                                });
+                            }
+                        });
+
+            // Investment section logic (stub)
+            document.getElementById('loadInvestmentsBtn')?.addEventListener('click', function() {
+                const investmentList = document.getElementById('investmentList');
+                investmentList.innerHTML = '<p>Loading investments...</p>';
+                // TODO: Fetch and display user's investments from backend/contract
+                setTimeout(() => {
+                    investmentList.innerHTML = '<p>(Demo) No investments found yet.</p>';
+                }, 1000);
+            });
+
+            function createWriterRow() {
+                const wrapper = document.createElement('div');
+                wrapper.className = 'multi-input-row';
+                wrapper.innerHTML = `
+                    <input class="writer-first" type="text" placeholder="First name" required>
+                    <input class="writer-middle" type="text" placeholder="Middle name">
+                    <input class="writer-last" type="text" placeholder="Last name" required>
+                    <input class="writer-share" type="number" placeholder="Share %" min="0" max="100" required>
+                    <button type="button" class="remove-row-btn">Delete</button>
+                `;
+                wrapper.querySelector('.remove-row-btn').addEventListener('click', () => {
+                    wrapper.remove();
+                    if (writersContainer.querySelectorAll('.multi-input-row').length === 0) {
+                        writersContainer.appendChild(createWriterRow());
+                    }
+                });
+                return wrapper;
+            }
+
+            addWriterBtn.addEventListener('click', function () {
+                writersContainer.appendChild(createWriterRow());
+            });
+
+            // ===== Wallet + ID Verification Logic =====
+            const verifyBtn = document.getElementById('verifyIdBtn');
+            const clearBtn = document.getElementById('clearVerificationBtn');
+            const idStatus = document.getElementById('idVerificationStatus');
+            const idNumberInput = document.getElementById('idNumber');
+            const idDocumentInput = document.getElementById('idDocument');
+            const registerSubmitBtn = registrationForm ? registrationForm.querySelector('button[type="submit"]') : null;
+            const connectBtn = document.getElementById('connectBtn');
+            const walletAddressDisplay = document.getElementById('walletAddress');
+
+            let connectedWallet = null;
+
+            function setConnectedWallet(addr) {
+                connectedWallet = addr || null;
+                try { if (addr) localStorage.setItem('user_wallet', addr); else localStorage.removeItem('user_wallet'); } catch(e){}
+                if (walletAddressDisplay) walletAddressDisplay.textContent = addr ? `Connected: ${addr}` : '';
+            }
+
+            async function connectWallet() {
+                if (!window.ethereum) {
+                    alert('No Ethereum provider detected. Install MetaMask.');
+                    return null;
+                }
+                try {
+                    // Ensure user is on Avalanche Fuji testnet
+                    await ensureAvalancheFujiNetwork();
+                    const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+                    if (accounts && accounts.length > 0) {
+                        setConnectedWallet(accounts[0]);
+                        return accounts[0];
+                    }
+                } catch (e) {
+                    console.error('Wallet connect error', e);
+                }
+                return null;
+            }
+
+            async function ensureAvalancheFujiNetwork() {
+                // Avalanche Fuji chainId: 0xa869 (43113)
+                const FUJI_CHAIN_ID = '0xA869'.toLowerCase();
+                try {
+                    const chainId = await window.ethereum.request({ method: 'eth_chainId' });
+                    if (chainId && chainId.toLowerCase() === FUJI_CHAIN_ID) return;
+                } catch (e) {
+                    // continue to attempt adding/switching
+                }
+                try {
+                    await window.ethereum.request({
+                        method: 'wallet_addEthereumChain',
+                        params: [{
+                            chainId: '0xA869',
+                            chainName: 'Avalanche Fuji Testnet',
+                            nativeCurrency: { name: 'Avalanche', symbol: 'AVAX', decimals: 18 },
+                            rpcUrls: ['https://api.avax-test.network/ext/bc/C/rpc'],
+                            blockExplorerUrls: ['https://testnet.snowtrace.io']
+                        }]
+                    });
+                    // After adding, request switch
+                    await window.ethereum.request({ method: 'wallet_switchEthereumChain', params: [{ chainId: '0xA869' }] });
+                } catch (err) {
+                    console.warn('Could not switch or add Avalanche Fuji network:', err);
+                }
+            }
+
+            // restore wallet if previously connected and auto-connect when user recently logged in
+            (async function(){
+                try {
+                    const w = localStorage.getItem('user_wallet');
+                    const logged = localStorage.getItem('user_logged_in') === '1';
+                    if (w) setConnectedWallet(w);
+                    if (logged) {
+                        // attempt to (re)connect via provider to ensure permissions are active
+                        try {
+                            const addr = await connectWallet();
+                            if (addr) setConnectedWallet(addr);
+                        } catch(e) {
+                            // ignore connect failures
+                        }
+                    }
+                } catch(e){}
+            })();
+
+            if (connectBtn) {
+                connectBtn.addEventListener('click', async function(){
+                    const addr = await connectWallet();
+                    if (addr) alert('Wallet connected: ' + addr);
+                });
+            }
+
+            function setVerified(flag) {
+                try { localStorage.setItem('id_verified', flag ? '1' : '0'); } catch (e) {}
+                if (idStatus) {
+                    idStatus.textContent = flag ? 'Verified' : 'Not verified (pending)';
+                    idStatus.style.color = flag ? 'green' : '#666';
+                }
+                if (registerSubmitBtn) registerSubmitBtn.disabled = !flag;
+            }
+
+            // Initialize state on load
+            (function(){
+                const stored = (localStorage.getItem('id_verified') === '1');
+                setVerified(stored);
+            })();
+
+            async function pollVerificationByAddress(address, intervalMs = 8000, maxAttempts = 15) {
+                if (!address) return;
+                let attempts = 0;
+                const iv = setInterval(async () => {
+                    attempts += 1;
+                    try {
+                        const res = await fetch(`/id/status?userAddress=${encodeURIComponent(address)}`);
+                        if (res.ok) {
+                            const j = await res.json();
+                            if (j.success && j.record && j.record.status === 'verified') {
+                                setVerified(true);
+                                clearInterval(iv);
+                                return;
+                            }
+                        }
+                    } catch (e) {
+                        console.error('Polling error', e);
+                    }
+                    if (attempts >= maxAttempts) clearInterval(iv);
+                }, intervalMs);
+            }
+
+            if (verifyBtn) {
+                verifyBtn.addEventListener('click', async function(){
+                    const idNum = idNumberInput ? idNumberInput.value.trim() : '';
+                    const fileOk = idDocumentInput && idDocumentInput.files && idDocumentInput.files.length > 0;
+                    if (!idNum || idNum.length < 4) {
+                        alert('Please enter a valid ID / CAE / IPI number (at least 4 characters).');
+                        return;
+                    }
+                    if (!fileOk) {
+                        alert('Please upload an ID document (photo or PDF) to verify.');
+                        return;
+                    }
+
+                    // ensure wallet connected
+                    let addr = connectedWallet;
+                    if (!addr && window.ethereum) {
+                        addr = await connectWallet();
+                    }
+                    if (!addr) {
+                        if (!confirm('No wallet connected. You can still submit but it will not be linked to your wallet. Submit anyway?')) return;
+                    }
+
+                    // Submit to backend for manual verification
+                    const fd = new FormData();
+                    fd.append('idNumber', idNum);
+                    if (addr) fd.append('userAddress', addr);
+                    fd.append('idDocument', idDocumentInput.files[0]);
+
+                    idStatus.textContent = 'Submitting...';
+                    try {
+                        const submitUrls = [
+                            '/id/submit',
+                            'http://127.0.0.1:5000/id/submit',
+                            'http://127.0.0.1:5004/id/submit'
+                        ];
+                        let res = null;
+                        let lastNetworkError = null;
+                        let lastErrorText = '';
+                        for (const submitUrl of submitUrls) {
+                            try {
+                                const attemptRes = await fetch(submitUrl, { method: 'POST', body: fd });
+                                if (attemptRes.ok) {
+                                    res = attemptRes;
+                                    lastErrorText = '';
+                                    break;
+                                }
+                                const attemptRaw = await attemptRes.text();
+                                lastErrorText = attemptRaw || `HTTP ${attemptRes.status}`;
+                            } catch (networkErr) {
+                                lastNetworkError = networkErr;
+                            }
+                        }
+                        if (!res) {
+                            if (lastErrorText) {
+                                idStatus.textContent = lastErrorText;
+                                return;
+                            }
+                            throw lastNetworkError || new Error('Unable to reach ID submit endpoint.');
+                        }
+
+                        const raw = await res.text();
+                        let j = null;
+                        try { j = raw ? JSON.parse(raw) : null; } catch (_) { j = null; }
+                        idStatus.textContent = 'Submitted (pending)';
+                        setVerified(false);
+                        // save record id and start polling by address
+                        try { if (j && j.id) localStorage.setItem('id_verification_record_id', j.id); } catch(e){}
+                        if (addr) pollVerificationByAddress(addr);
+                        alert('ID submitted for verification. Admin will approve shortly.');
+                    } catch (e) {
+                        console.error(e);
+                        idStatus.textContent = 'Submission failed: backend not reachable. Start server on 127.0.0.1:5000.';
+                    }
+                });
+            }
+
+            if (clearBtn) {
+                clearBtn.addEventListener('click', function(){
+                    if (idNumberInput) idNumberInput.value = '';
+                    if (idDocumentInput) idDocumentInput.value = '';
+                    try { localStorage.removeItem('id_verification_record_id'); } catch(e){}
+                    setVerified(false);
+                });
+            }
+
+            registrationForm.addEventListener('submit', async function (event) {
+                event.preventDefault();
+
+                // Ensure ID verification passed before allowing registration
+                try {
+                    const verified = (localStorage.getItem('id_verified') === '1');
+                    if (!verified) {
+                        registrationStatus.textContent = 'ID verification is required before registering songs. Please verify your ID.';
+                        registrationStatus.className = 'registration-status error';
+                        return;
+                    }
+                } catch (e) {
+                    // storage access issue - block registration
+                    registrationStatus.textContent = 'Unable to verify ID state. Registration blocked.';
+                    registrationStatus.className = 'registration-status error';
+                    return;
+                }
+
+                const getArtistValue = () => {
+                    const input = artistsContainer.querySelector('.artist-input');
+                    return input ? input.value.trim() : '';
+                };
+
+                const getWriterValues = () => {
+                    return Array.from(writersContainer.querySelectorAll('.multi-input-row')).map(row => {
+                        const first = row.querySelector('.writer-first').value.trim();
+                        const middle = row.querySelector('.writer-middle').value.trim();
+                        const last = row.querySelector('.writer-last').value.trim();
+                        const share = row.querySelector('.writer-share').value.trim();
+                        return { first, middle, last, share: share ? Number(share) : 0 };
+                    }).filter(item => item.first.length > 0 && item.last.length > 0);
+                };
+
+                const artistName = getArtistValue();
+                const writerNames = getWriterValues();
+                const totalWriterShare = writerNames.reduce((sum, writer) => sum + writer.share, 0);
+
+                const songFileInput = document.getElementById('songFile');
+                const songFile = songFileInput && songFileInput.files.length > 0 ? songFileInput.files[0] : null;
+
+                if (!registrationForm.songTitle.value.trim() || !registrationForm.caeIpi.value.trim() || !registrationForm.isrc.value.trim() || !artistName || writerNames.length === 0 || !songFile) {
+                    registrationStatus.textContent = 'Please fill in the required fields: song title, artist name, at least one songwriter, CAE/IPI, ISRC, and upload a song file.';
+                    registrationStatus.className = 'registration-status error';
+                    return;
+                }
+
+                if (totalWriterShare !== 100) {
+                    registrationStatus.textContent = 'Writer split shares must total 100%.';
+                    registrationStatus.className = 'registration-status error';
+                    return;
+                }
+
+                const formData = new FormData();
+                formData.append('songTitle', registrationForm.songTitle.value.trim());
+                formData.append('artistName', artistName);
+                formData.append('writerNames', JSON.stringify(writerNames));
+                formData.append('collectionSociety', registrationForm.collectionSociety.value);
+                formData.append('caeIpi', registrationForm.caeIpi.value.trim());
+                formData.append('isrc', registrationForm.isrc.value.trim());
+                formData.append('publisher', registrationForm.publisher.value.trim());
+                formData.append('songFile', songFile);
+                // Attach connected wallet address so backend can link record to wallet (not uploaded on-chain)
+                try { if (connectedWallet) formData.append('userAddress', connectedWallet); } catch(e){}
+
+                registrationStatus.textContent = 'Registering...';
+                try {
+                    const response = await fetch('/song/register', {
+                        method: 'POST',
+                        body: formData
+                    });
+
+                    const result = await response.json();
+
+                    if (!response.ok) {
+                        registrationStatus.textContent = result.message || 'Registration failed.';
+                        registrationStatus.className = 'registration-status error';
+                        return;
+                    }
+
+                    let statusMsg = result.message || 'Song registered successfully.';
+                    if (result.song && result.song.ipfs_cid) {
+                        statusMsg += `\nIPFS CID: <a href="https://ipfs.io/ipfs/${result.song.ipfs_cid}" target="_blank">${result.song.ipfs_cid}</a>`;
+                    }
+                    registrationStatus.innerHTML = statusMsg;
+                    registrationStatus.className = 'registration-status success';
+                    registrationForm.reset();
+                    artistsContainer.innerHTML = '';
+                    writersContainer.innerHTML = '';
+                    artistsContainer.appendChild(createInputRow('artist-input', 'Artist name'));
+                    writersContainer.appendChild(createWriterRow());
+                    // Reload library to show new song
+                    if (typeof loadLibrary === 'function') {
+                        loadLibrary();
+                    }
+                } catch (error) {
+                    registrationStatus.textContent = 'Unable to register song. Please try again later.';
+                    registrationStatus.className = 'registration-status error';
+                    console.error('Song registration error:', error);
+                }
+            });
+        </script>
+    </body>
+</html>

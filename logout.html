@@ -1,0 +1,54 @@
+<!doctype html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <link rel="stylesheet" type="text/css" href="css/main.css">
+        <script src="https://cdn.jsdelivr.net/npm/ethers@6.7.0/dist/ethers.umd.min.js" defer></script>
+
+         <!-- JS FILE -->
+         <script src="app.js?v=20260706-ipfsonly50" defer></script>
+            <title>Blochchain | Smart_Music</title>
+    </head> 
+    
+    <body>
+        <header>
+            <div id="Logo">
+                <img src="img/blochchain-music-smart.jpeg">
+                <h2>BlockChain | Music-Smart</h2>
+            </div>
+            <nav>
+                <div class="nav-links">
+                    <ul>
+                        <li><a href="/index.html">Browse</a></li>
+                        <li><a href="/analysis.html">Analysis</a></li>
+                        <li><a href="/chatroom.html">Chatroom</a></li>
+                        <!-- <li><a href="/registered_songs.html">Registered Songs</a></li> -->
+                        <li><a href="/Profile.html">Profile</a></li>
+                        <li><a href="/login.html">Login</a></li>
+                        
+                        <li><a href="/logout.html">Logout</a></li>
+                    </ul>
+                </div>
+            </nav>
+                <div>
+                    <button id="connectBtn">Connect Wallet</button>
+                         <p id="walletAddress"></p>
+                </div>
+        </header>
+        <main class="page-center">
+            <div class="logout-container">
+                 <h2>You have been logged out</h2>
+                 <form action="/login.html">
+                     <button type="submit">Log In Again</button>
+                 </form>
+                 <p>Thank you for visiting.</p>
+            </div>
+        </main>
+        <script>
+            // Clear client-side session keys
+            try { localStorage.removeItem('user_logged_in'); localStorage.removeItem('user_wallet'); } catch(e){}
+        </script>
+</body>
+</html>

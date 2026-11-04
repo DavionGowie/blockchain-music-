@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Admin Login | Music Smart</title>
+    <link rel="stylesheet" type="text/css" href="css/main.css">
+</head>
+<body>
+    <header>
+        <div id="Logo">
+            <img src="img/blochchain-music-smart.jpeg" alt="Music Smart Logo">
+            <h2>Admin Login</h2>
+        </div>
+    </header>
+
+    <main class="page-center">
+        <div class="login-container">
+            <h2>Admin Panel Login</h2>
+            <form id="adminLoginForm">
+                <div class="registration-row">
+                    <label for="adminUsername">Username</label>
+                    <input id="adminUsername" type="text" placeholder="Admin username" required>
+                </div>
+                <div class="registration-row">
+                    <label for="adminPassword">Password</label>
+                    <input id="adminPassword" type="password" placeholder="Admin password" required>
+                </div>
+                <button type="submit">Sign In</button>
+                <p id="adminLoginStatus" class="registration-status"></p>
+            </form>
+            <p>If you already have a token, <a href="admin_panel.html">go to admin panel</a>.</p>
+            <p>Want to search Spotify artists and content? <a href="Profile.html">Go to Spotify Artist Search</a></p>
+        </div>
+    </main>
+
+    <script>
+        // Admin login logic
+        function getApiBaseCandidates() {
+            const bases = [];
+            const saved = localStorage.getItem('API_BASE');
+            if (saved) {
+                try {
+                    bases.push(new URL(saved, window.location.origin).origin);
+                } catch (_) {
+                    // ignore malformed saved value
+                }
+            }
+
+            const isLocal = window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost';
+            if (isLocal) {
+                bases.push('http://127.0.0.1:5000');
+                bases.push('http://localhost:5000');
+            }
+
+            bases.push(window.location.origin);
+            return [...new Set(bases)];
+        }
+
+        const API_BASE_CANDIDATES = getApiBaseCandidates();
+        const adminLoginForm = document.getElementById('adminLoginForm');
+        const status = document.getElementById('adminLoginStatus');
+
+        async function tryAdminLogin(base, payload) {
+            const response = await fetch(`${base}/admin/login`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            const contentType = response.headers.get('content-type') || '';
+            const data = contentType.includes('application/json')
+                ? await response.json()
+                : { message: await response.text() };
+            return { response, data, base };
+        }
+
+        adminLoginForm.addEventListener('submit', async function (event) {
+            event.preventDefault();
+            const username = document.getElementById('adminUsername').value.trim();
+            const password = document.getElementById('adminPassword').value.trim();
+            if (!username || !password) {
+                status.textContent = 'Please enter both username and password.';
+                status.className = 'registration-status error';
+                return;
+            }
+            try {
+                let loginResult = null;
+                let lastError = null;
+                for (const base of API_BASE_CANDIDATES) {
+                    try {
+                        const result = await tryAdminLogin(base, { username, password });
+                        loginResult = result;
+                        if (result.response.ok || result.response.status === 401) {
+                            break;
+                        }
+                    } catch (error) {
+                        lastError = error;
+                    }
+                }
+
+                if (!loginResult) {
+                    throw lastError || new Error('Unable to reach admin backend.');
+                }
+
+                const { response, data, base } = loginResult;
+                if (!response.ok) {
+                    status.textContent = data.message || 'Login failed.';
+                    status.className = 'registration-status error';
+                    return;
+                }
+                if (data.admin_token) {
+                    localStorage.setItem('adminToken', data.admin_token);
+                }
+                localStorage.setItem('API_BASE', base);
+                window.location.href = 'admin_panel.html';
+            } catch (error) {
+                status.textContent = `Unable to login. ${error.message || 'Please try again later.'}`;
+                status.className = 'registration-status error';
+                console.error('Admin login error:', error);
+            }
+        });
+    </script>
+</body>
+</html>

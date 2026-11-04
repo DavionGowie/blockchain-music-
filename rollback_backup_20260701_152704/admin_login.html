@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Admin Login | Music Smart</title>
+    <link rel="stylesheet" type="text/css" href="css/main.css">
+</head>
+<body>
+    <header>
+        <div id="Logo">
+            <img src="img/blochchain-music-smart.jpeg" alt="Music Smart Logo">
+            <h2>Admin Login</h2>
+        </div>
+    </header>
+
+    <main class="page-center">
+        <div class="login-container">
+            <h2>Admin Panel Login</h2>
+            <form id="adminLoginForm">
+                <div class="registration-row">
+                    <label for="adminUsername">Username</label>
+                    <input id="adminUsername" type="text" placeholder="Admin username" required>
+                </div>
+                <div class="registration-row">
+                    <label for="adminPassword">Password</label>
+                    <input id="adminPassword" type="password" placeholder="Admin password" required>
+                </div>
+                <button type="submit">Sign In</button>
+                <p id="adminLoginStatus" class="registration-status"></p>
+            </form>
+            <p>If you already have a token, <a href="admin_panel.html">go to admin panel</a>.</p>
+            <p>Want to search Spotify artists and content? <a href="Profile.html">Go to Spotify Artist Search</a></p>
+        </div>
+    </main>
+
+    <script>
+        // Admin login logic
+        const API_BASE = localStorage.getItem('API_BASE') || (window.location.origin.startsWith('file:') ? 'http://127.0.0.1:5000' : window.location.origin);
+        const adminLoginForm = document.getElementById('adminLoginForm');
+        const status = document.getElementById('adminLoginStatus');
+
+        adminLoginForm.addEventListener('submit', async function (event) {
+            event.preventDefault();
+            const username = document.getElementById('adminUsername').value.trim();
+            const password = document.getElementById('adminPassword').value.trim();
+            if (!username || !password) {
+                status.textContent = 'Please enter both username and password.';
+                status.className = 'registration-status error';
+                return;
+            }
+            try {
+                const response = await fetch(`${API_BASE}/admin/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password })
+                });
+                const data = await response.json();
+                if (!response.ok) {
+                    status.textContent = data.message || 'Login failed.';
+                    status.className = 'registration-status error';
+                    return;
+                }
+                // No need to store token in localStorage; cookie is set by backend
+                window.location.href = 'admin_panel.html';
+            } catch (error) {
+                status.textContent = 'Unable to login. Please try again later.';
+                status.className = 'registration-status error';
+                console.error('Admin login error:', error);
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,330 @@
+<!doctype html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <link rel="stylesheet" type="text/css" href="css/main.css">
+        <script src="https://cdn.jsdelivr.net/npm/ethers@6.7.0/dist/ethers.umd.min.js" defer></script>
+
+         <!-- JS FILE -->
+         <script src="app.js?v=20260706-ipfsonly50" defer></script>
+            <title>Blochchain | Smart_Music</title>
+    </head> 
+    
+    <body>
+        <header>
+            <div id="Logo">
+                <img src="img/blochchain-music-smart.jpeg">
+               <h2>BlockChain | Music-Smart</h2>
+            </div>
+            <nav>
+                <div class="nav-links">
+                  <ul>
+                    <li><a href="/index.html">Browse</a></li>
+                    <li><a href="/analysis.html">Analysis</a></li>
+                    <li><a href="/chatroom.html">Chatroom</a></li>
+                    <!-- <li><a href="/registered_songs.html">Registered Songs</a></li> -->
+                    <li><a href="/Profile.html">Profile</a></li>
+                    <li><a href="/login.html">Login</a></li>
+                        
+                    <li><a href="/logout.html">Logout</a></li>
+                  </ul>
+                </div>
+            </nav>
+                <div>
+                     <button id="connectBtn">Connect Wallet</button>
+                         <p id="walletAddress"></p>
+                </div>
+        </header>
+        <main class="page-center">
+          <div class="login-container">
+            <div class="auth-toggle">
+              <button id="showLoginBtn" class="active" type="button">Login</button>
+              <button id="showRegisterBtn" type="button">Register</button>
+            </div>
+            <div class="auth-grid">
+              <div class="auth-card login-card active">
+                <h2>Login</h2>
+                <form id="loginForm">
+                  <select id="loginAccountType" required>
+                    <option value="user" selected>User</option>
+                    <option value="artist">Artist</option>
+                  </select>
+                  <input id="loginUsername" type="text" placeholder="Username" required />
+                  <input id="loginPassword" type="password" placeholder="Password" required />
+                  <label for="showLoginPassword" style="display:flex; align-items:center; gap:8px; margin:4px 0 8px 0; font-size:0.95em;">
+                    <input id="showLoginPassword" type="checkbox" />
+                    Show Password
+                  </label>
+                  <button type="submit">Login</button>
+                </form>
+                <button id="showChangePasswordBtn" type="button" style="margin-top:10px;">Change Password</button>
+                <div style="margin-top:10px;">
+                  <a href="/admin_login.html">Admin Login</a>
+                </div>
+                <p id="loginStatus"></p>
+              </div>
+              <div class="auth-card register-card">
+                <h2>Register</h2>
+                <form id="registerForm">
+                  <select id="registerAccountType" required>
+                    <option value="user" selected>User</option>
+                    <option value="artist">Artist</option>
+                  </select>
+                  <input id="registerName" type="text" placeholder="Full Name" required />
+                  <input id="registerUsername" type="text" placeholder="Username" required />
+                  <input id="registerEmail" type="email" placeholder="Email" required />
+                  <input id="registerPassword" type="password" placeholder="Password" required />
+                  <button type="submit">Register</button>
+                </form>
+                <p id="registerStatus"></p>
+              </div>
+              <div class="auth-card" id="changePasswordCard" style="display:none;">
+                <h2>Change Password</h2>
+                <form id="changePasswordForm">
+                  <select id="changePasswordAccountType" required>
+                    <option value="user" selected>User</option>
+                    <option value="artist">Artist</option>
+                  </select>
+                  <input id="changePasswordUsername" type="text" placeholder="Username" required />
+                  <input id="changePasswordCurrent" type="password" placeholder="Current Password" required />
+                  <input id="changePasswordNew" type="password" placeholder="New Password" required />
+                  <button type="submit">Update Password</button>
+                </form>
+                <button id="hideChangePasswordBtn" type="button" style="margin-top:10px;">Back to Login</button>
+                <p id="changePasswordStatus"></p>
+              </div>
+            </div>
+            <div style="margin-top: 32px; text-align: center;">
+              <button id="walletLoginBtn">Login with Wallet</button>
+              <p id="walletLoginStatus"></p>
+            </div>
+            <p>Welcome back! Use your wallet and account to access your music.</p>
+          </div>
+        </main>
+        <script>
+          document.addEventListener('DOMContentLoaded', function () {
+            const loginBtn = document.getElementById('showLoginBtn');
+            const registerBtn = document.getElementById('showRegisterBtn');
+            const loginCard = document.querySelector('.login-card');
+            const registerCard = document.querySelector('.register-card');
+            const changePasswordCard = document.getElementById('changePasswordCard');
+            const showChangePasswordBtn = document.getElementById('showChangePasswordBtn');
+            const hideChangePasswordBtn = document.getElementById('hideChangePasswordBtn');
+
+            function buildApiUrl(path) {
+              const cleanPath = path.startsWith('/') ? path : `/${path}`;
+              const isLocal = window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost';
+              if (isLocal && window.location.port !== '5000') {
+                return `${window.location.protocol}//${window.location.hostname}:5000${cleanPath}`;
+              }
+              return cleanPath;
+            }
+
+            function toggleAuth(showLogin) {
+              loginBtn.classList.toggle('active', showLogin);
+              registerBtn.classList.toggle('active', !showLogin);
+              loginCard.classList.toggle('active', showLogin);
+              registerCard.classList.toggle('active', !showLogin);
+              if (changePasswordCard) changePasswordCard.style.display = 'none';
+            }
+
+            loginBtn.addEventListener('click', function () {
+              toggleAuth(true);
+            });
+
+            registerBtn.addEventListener('click', function () {
+              toggleAuth(false);
+            });
+
+            if (showChangePasswordBtn) {
+              showChangePasswordBtn.addEventListener('click', function () {
+                loginCard.classList.remove('active');
+                registerCard.classList.remove('active');
+                if (changePasswordCard) changePasswordCard.style.display = 'block';
+              });
+            }
+
+            if (hideChangePasswordBtn) {
+              hideChangePasswordBtn.addEventListener('click', function () {
+                if (changePasswordCard) changePasswordCard.style.display = 'none';
+                toggleAuth(true);
+              });
+            }
+
+            const loginForm = document.getElementById('loginForm');
+            const registerForm = document.getElementById('registerForm');
+            const changePasswordForm = document.getElementById('changePasswordForm');
+            const loginStatus = document.getElementById('loginStatus');
+            const registerStatus = document.getElementById('registerStatus');
+            const changePasswordStatus = document.getElementById('changePasswordStatus');
+            const loginPasswordInput = document.getElementById('loginPassword');
+            const showLoginPasswordCheckbox = document.getElementById('showLoginPassword');
+
+            if (loginPasswordInput && showLoginPasswordCheckbox) {
+              showLoginPasswordCheckbox.addEventListener('change', function () {
+                loginPasswordInput.type = showLoginPasswordCheckbox.checked ? 'text' : 'password';
+              });
+            }
+
+            if (loginForm) {
+              loginForm.addEventListener('submit', async function (event) {
+                event.preventDefault();
+                loginStatus.textContent = 'Logging in...';
+                try {
+                  const payload = {
+                    username: document.getElementById('loginUsername').value.trim(),
+                    password: document.getElementById('loginPassword').value,
+                    accountType: document.getElementById('loginAccountType').value
+                  };
+                  const response = await fetch(buildApiUrl('/user/login'), {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                  });
+                  const result = await response.json();
+                  if (!response.ok || !result.success) {
+                    loginStatus.textContent = result.error || result.message || 'Login failed.';
+                    return;
+                  }
+                  try {
+                    localStorage.setItem('user_logged_in', '1');
+                    localStorage.setItem('user_name', result.name || payload.username);
+                    localStorage.setItem('user_username', payload.username);
+                    localStorage.setItem('user_account_type', result.account_type || payload.accountType);
+                  } catch (e) {}
+                  loginStatus.textContent = `Welcome ${result.name || payload.username}! Redirecting...`;
+                  window.location.href = 'Profile.html';
+                } catch (error) {
+                  loginStatus.textContent = 'Unable to login right now. Please try again.';
+                }
+              });
+            }
+
+            if (registerForm) {
+              registerForm.addEventListener('submit', async function (event) {
+                event.preventDefault();
+                registerStatus.textContent = 'Creating account...';
+                try {
+                  const payload = {
+                    accountType: document.getElementById('registerAccountType').value,
+                    name: document.getElementById('registerName').value.trim(),
+                    username: document.getElementById('registerUsername').value.trim(),
+                    email: document.getElementById('registerEmail').value.trim(),
+                    password: document.getElementById('registerPassword').value
+                  };
+                  const response = await fetch(buildApiUrl('/user/register'), {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                  });
+                  const result = await response.json();
+                  if (!response.ok || !result.success) {
+                    registerStatus.textContent = result.error || result.message || 'Registration failed.';
+                    return;
+                  }
+                  registerStatus.textContent = 'Registration successful. Please login.';
+                  registerForm.reset();
+                  toggleAuth(true);
+                } catch (error) {
+                  registerStatus.textContent = 'Unable to register right now. Please try again.';
+                }
+              });
+            }
+
+            if (changePasswordForm) {
+              changePasswordForm.addEventListener('submit', async function (event) {
+                event.preventDefault();
+                changePasswordStatus.textContent = 'Updating password...';
+                try {
+                  const payload = {
+                    accountType: document.getElementById('changePasswordAccountType').value,
+                    username: document.getElementById('changePasswordUsername').value.trim(),
+                    currentPassword: document.getElementById('changePasswordCurrent').value,
+                    newPassword: document.getElementById('changePasswordNew').value
+                  };
+                  const response = await fetch(buildApiUrl('/user/change-password'), {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                  });
+                  const result = await response.json();
+                  if (!response.ok || !result.success) {
+                    changePasswordStatus.textContent = result.error || result.message || 'Password update failed.';
+                    return;
+                  }
+                  changePasswordStatus.textContent = 'Password updated successfully. You can now login with your new password.';
+                  changePasswordForm.reset();
+                } catch (error) {
+                  changePasswordStatus.textContent = 'Unable to update password right now. Please try again.';
+                }
+              });
+            }
+          });
+        </script>
+        <script>
+            const walletLoginBtn = document.getElementById('walletLoginBtn');
+            const walletLoginStatus = document.getElementById('walletLoginStatus');
+
+          function showWalletLoginUnavailable() {
+            walletLoginStatus.textContent = 'Wallet login requires MetaMask. Use the username/password login above, or install MetaMask to continue with wallet login.';
+            if (walletLoginBtn) {
+              walletLoginBtn.disabled = true;
+            }
+          }
+
+          if (!window.ethereum) {
+            showWalletLoginUnavailable();
+          }
+
+            walletLoginBtn.onclick = async function() {
+                if (!window.ethereum) {
+              showWalletLoginUnavailable();
+                    return;
+                }
+                try {
+                    // 1. Request wallet connection
+                    const provider = new ethers.BrowserProvider(window.ethereum);
+                    const accounts = await provider.send("eth_requestAccounts", []);
+                    const wallet = accounts[0];
+
+                    // 2. Get nonce from backend
+                    const nonceRes = await fetch('/user/nonce', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ wallet })
+                    });
+                    const nonceData = await nonceRes.json();
+                    if (!nonceData.success) {
+                        walletLoginStatus.textContent = nonceData.error || "Failed to get nonce.";
+                        return;
+                    }
+                    const nonce = nonceData.nonce;
+
+                    // 3. Sign nonce
+                    const signer = await provider.getSigner();
+                    const signature = await signer.signMessage(nonce);
+
+                    // 4. Send signature to backend for login
+                    const loginRes = await fetch('/user/wallet-login', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ wallet, signature })
+                    });
+                    const loginData = await loginRes.json();
+                    if (loginData.success) {
+                        walletLoginStatus.textContent = "Wallet login successful!";
+                        // Redirect or update UI as needed
+                      try { localStorage.setItem('user_wallet', wallet); localStorage.setItem('user_logged_in','1'); } catch(e){}
+                      window.location.href = "Profile.html";
+                    } else {
+                        walletLoginStatus.textContent = loginData.error || "Wallet login failed.";
+                    }
+                } catch (err) {
+                    walletLoginStatus.textContent = "Wallet login error: " + err.message;
+                }
+            };
+        </script>
+</body>
+</html>

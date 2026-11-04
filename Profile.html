@@ -1,0 +1,1497 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="Web3 Music App: browse, play, buy, and download music with blockchain integration.">
+    <link rel="stylesheet" type="text/css" href="css/main.css">
+    <script src="https://cdn.jsdelivr.net/npm/ethers@6.7.0/dist/ethers.umd.min.js" defer></script>
+        <script src="app.profile.js?v=20260721_playbackfallback1" defer></script>
+    <title>Blockchain | Smart_Music | Live Chatroom</title>
+</head>
+
+<body>
+        <header>
+            <div id="Logo">
+                <img src="img/blochchain-music-smart.jpeg">
+                <h2>BlockChain | Music-Smart</h2>
+            </div>
+            <nav>
+                <div id="nav">
+                    <ul>
+                        <li><a href="/index.html">Browse</a></li>
+                        <li><a href="/analysis.html">Analysis</a></li>
+                        <li><a href="/chatroom.html">Chatroom</a></li>
+                        <li><a href="/Profile.html">Profile</a></li>
+                        <li><a href="/login.html">Login</a></li>
+                        <li><a href="/logout.html">Logout</a></li>
+                    </ul>
+                    
+                </div>
+            </nav>
+                <div>
+                    <button id="connectBtn">Connect Wallet</button>
+                         <p id="walletAddress"></p>
+                </div>
+        </header>
+    <section id="banner">
+            <div id="br">
+                <H4>Here is your music Hub | Stream your music here</H4>
+                    <p>Welcome back to your personal music hub. Enjoy seamless playback 
+                        <br>with your currently playing track while exploring your full </br>
+                         library of songs, albums, artists, and playlists. Access your downloads
+                         <Br> anytime and stay connected to your favorite music in one place. </br>
+                         <br>Your profile is designed to give you full control, easy navigation, 
+                         </br> and a smooth listening experience tailored just for you.
+                    </p>
+            </div>
+            <div id="bpic">
+                <img src="img/music-imagery-dark-colour.jpg">
+            </div>
+    
+        </section>
+
+        <!-- ID VERIFICATION: prevents unverified users from uploading songs to blockchain -->
+        <section id="id-verification" style="margin:40px auto; max-width:800px; background:#fff; padding:18px; border-radius:8px; box-shadow:0 2px 8px rgba(0,0,0,0.05);">
+            <h2>ID Verification</h2>
+            <p>Please verify your identity before registering songs or uploading metadata to the blockchain. Verification is required to enable the song registration action.</p>
+            <div style="display:flex;flex-direction:column;gap:8px;">
+                <label for="idType">ID Type</label>
+                <select id="idType" style="padding:8px;">
+                    <option value="passport">Passport</option>
+                    <option value="drivers_license">Driver's License</option>
+                </select>
+
+                <label for="idNumber">ID Number</label>
+                <input id="idNumber" type="text" placeholder="Enter your selected ID number" style="padding:8px;" />
+
+                <label for="idDocument">Upload ID Document (photo/scan)</label>
+                <input id="idDocument" type="file" accept="image/*,application/pdf" />
+                <small id="idDocumentHint" style="color:#666;">Upload 1 document.</small>
+
+                <div id="driversLicensePhotos" style="display:none; flex-direction:column; gap:8px; border:1px solid #d9e3f2; padding:10px; border-radius:8px; background:#f8fbff;">
+                    <label for="idDocumentFront">Driver's License Front Photo</label>
+                    <input id="idDocumentFront" type="file" accept="image/*" />
+                    <label for="idDocumentBack">Driver's License Back Photo</label>
+                    <input id="idDocumentBack" type="file" accept="image/*" />
+                </div>
+
+                <div style="display:flex;gap:8px;align-items:center;margin-top:8px;">
+                    <button id="verifyIdBtn" type="button" style="padding:8px 14px;background:#0b74de;color:#fff;border:none;border-radius:4px;cursor:pointer;">Verify ID</button>
+                    <button id="clearVerificationBtn" type="button" style="padding:8px 14px;background:#ddd;color:#111;border:none;border-radius:4px;cursor:pointer;">Clear</button>
+                    <span id="idVerificationStatus" style="margin-left:12px;color:#666"></span>
+                </div>
+            </div>
+        </section>
+
+ 
+
+        
+
+   
+ <section class="spotify-artist-section">
+            <h2>Spotify Artist Content</h2>
+            <div class="search-container">
+                <input type="text" id="spotifyArtistSearch" placeholder="Spotify artist name or ID">
+                <button id="connectSpotifyArtistBtn" type="button">Search Artist</button>
+            </div>
+            <div id="artistLibrary"></div>
+            <div id="songs"></div>
+        </section>
+
+        <script>
+        (function () {
+            var PAGE_SIZE = 5;
+
+            function escapeHtml(value) {
+                return String(value || '')
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;')
+                    .replace(/'/g, '&#39;');
+            }
+
+            function normalizeName(value) {
+                return String(value || '')
+                    .trim()
+                    .toLowerCase()
+                    .replace(/[^a-z0-9]/g, '');
+            }
+
+            function sameArtist(left, right) {
+                var a = normalizeName(left);
+                var b = normalizeName(right);
+                if (!a || !b) return false;
+                return a === b || a.includes(b) || b.includes(a);
+            }
+
+            function formatDurationMs(durationMs) {
+                var safe = Number(durationMs);
+                if (!Number.isFinite(safe) || safe <= 0) return '';
+                var totalSeconds = Math.floor(safe / 1000);
+                var mins = Math.floor(totalSeconds / 60);
+                var secs = totalSeconds % 60;
+                return String(mins).padStart(2, '0') + ':' + String(secs).padStart(2, '0');
+            }
+
+            function setInlineStatus(message, isError) {
+                var statusEl = document.getElementById('status');
+                if (!statusEl) return;
+                statusEl.textContent = String(message || '');
+                statusEl.style.color = isError ? '#b42318' : '#155724';
+            }
+
+            var fallbackCoverCache = {};
+
+            async function fetchFallbackCover(trackName, artistName) {
+                try {
+                    var cacheKey = normalizeName(trackName) + '::' + normalizeName(artistName);
+                    if (Object.prototype.hasOwnProperty.call(fallbackCoverCache, cacheKey)) {
+                        return fallbackCoverCache[cacheKey];
+                    }
+
+                    var q = encodeURIComponent((trackName || '') + ' ' + (artistName || ''));
+                    var lookup = (async function () {
+                        var resp = await fetch('http://127.0.0.1:5000/spotify/search?q=' + q + '&limit=10&offset=0');
+                        if (!resp.ok) return null;
+                        var items = await resp.json();
+                        if (!Array.isArray(items) || items.length === 0) return null;
+
+                        var wantedArtist = normalizeName(artistName);
+                        var wantedTitle = normalizeName(trackName);
+                        var best = items.find(function (it) {
+                            return normalizeName(it.artist) === wantedArtist && normalizeName(it.title) === wantedTitle;
+                        }) || items.find(function (it) {
+                            return normalizeName(it.artist) === wantedArtist;
+                        }) || items[0];
+
+                        if (!best) return null;
+                        return {
+                            image: best.album_image || null,
+                            album: best.album || null
+                        };
+                    })();
+
+                    fallbackCoverCache[cacheKey] = lookup;
+                    var result = await lookup;
+                    fallbackCoverCache[cacheKey] = result;
+                    return result;
+                } catch (_) {
+                    return null;
+                }
+            }
+
+            async function profileInitialiseTrack(trackName, artistName, trackId, coverArtUrl, durationMs) {
+                var wallet = (window.userWallet || localStorage.getItem('userWallet') || '').trim();
+                if (!wallet) {
+                    setInlineStatus('Please connect your wallet first.', true);
+                    return;
+                }
+
+                var downloadPrice = prompt('Enter download price in AVAX:', '0.00001');
+                if (downloadPrice === null) return;
+
+                var investmentPrice = prompt('Enter investment price in AVAX:', '0.00001');
+                if (investmentPrice === null) return;
+
+                var downloadPrice = pricingConfig.downloadPrice;
+                var investmentPrice = pricingConfig.investmentPrice;
+                var fullRightsPrice = pricingConfig.fullRightsPrice;
+                var investmentEnabled = pricingConfig.investmentEnabled;
+                var fullRightsEnabled = pricingConfig.fullRightsEnabled;
+
+                function appendInitialisedSongCard(song) {
+                    var container = document.getElementById('initialisedSongsList');
+                    if (!container) return;
+
+                    var songKey = String(song.songId || song.ipfsCid || ((song.title || '') + '_' + (song.artist || ''))).trim();
+                    if (!songKey) return;
+                    var cardId = 'profileInitialisedSongCard_' + songKey.replace(/[^a-zA-Z0-9_-]/g, '_');
+                    var existingCard = document.getElementById(cardId);
+
+                    var card = document.createElement('div');
+                    card.id = cardId;
+                    card.className = 'card';
+                    card.style.margin = '12px 0';
+                    card.innerHTML = '' +
+                        '<div style="display:flex;justify-content:center;margin-bottom:12px;">' +
+                            '<img class="track-cover-art" src="' + escapeHtml(song.coverArtUrl || '') + '" alt="' + escapeHtml(song.title || 'Song') + ' cover art" style="width:160px;height:160px;object-fit:cover;border-radius:14px;border:2px solid #00bfff;' + (song.coverArtUrl ? '' : 'display:none;') + '" />' +
+                        '</div>' +
+                        '<h3>' + escapeHtml(song.title || 'Unknown Title') + '</h3>' +
+                        '<p>' + escapeHtml(song.artist || 'Unknown Artist') + ' | Song ID: ' + escapeHtml(String(song.songId || 'Pending')) + '</p>' +
+                        (formatDurationMs(song.durationMs || song.duration_ms) ? '<p>Length: ' + escapeHtml(formatDurationMs(song.durationMs || song.duration_ms)) + '</p>' : '') +
+                        '<p>Download: ' + escapeHtml(song.downloadPrice || 'N/A') + ' AVAX | Investment: ' + escapeHtml(song.investmentPrice || 'N/A') + ' AVAX | Full Rights: ' + escapeHtml(song.fullRightsPrice || 'N/A') + ' AVAX</p>' +
+                        '<div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">' +
+                            '<button type="button" data-action="download" data-song-id="' + escapeHtml(String(song.songId || '')) + '">Buy Download Rights</button>' +
+                            '<button type="button" data-action="invest" data-song-id="' + escapeHtml(String(song.songId || '')) + '" ' + (song.investmentEnabled === false ? 'disabled' : '') + '>' + (song.investmentEnabled === false ? 'Investment Disabled' : 'Invest') + '</button>' +
+                            '<button type="button" data-action="rights" data-song-id="' + escapeHtml(String(song.songId || '')) + '" ' + (song.fullRightsEnabled === false ? 'disabled' : '') + '>' + (song.fullRightsEnabled === false ? 'Rights Disabled' : 'Buy Full Rights') + '</button>' +
+                        '</div>' +
+                        (song.txHash ? '<p style="font-size:0.85em; color:#555; margin-top:8px;">Initialise TX: ' + escapeHtml(song.txHash) + '</p>' : '') +
+                        (song.ipfsCid ? '<p style="font-size:0.85em; color:#555; margin-top:8px;">IPFS CID: ' + escapeHtml(song.ipfsCid) + '</p>' : '');
+
+                    if (existingCard) {
+                        existingCard.replaceWith(card);
+                    } else {
+                        container.appendChild(card);
+                    }
+                }
+
+                try {
+                    var response = await fetch('http://127.0.0.1:5000/marketplace/upload_spotify_song', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            title: trackName,
+                            artist: artistName,
+                            spotify_id: trackId,
+                            cover_art_url: coverArtUrl || '',
+                            duration_ms: durationMs || null,
+                            download_price: downloadPrice,
+                            investment_price: investmentPrice,
+                            full_rights_price: fullRightsPrice,
+                            investment_enabled: investmentEnabled,
+                            full_rights_enabled: fullRightsEnabled,
+                            requester_wallet: wallet
+                        })
+                    });
+
+                    var data = await response.json();
+                    if (!response.ok || !data.success) {
+                        throw new Error(data.error || 'Initialise failed');
+                    }
+
+                    var songId = (typeof data.song_id !== 'undefined' && data.song_id !== null) ? Number(data.song_id) : null;
+                    var coverArtUrl = '';
+                    try {
+                        var fallbackCover = await fetchFallbackCover(trackName, artistName);
+                        coverArtUrl = fallbackCover && fallbackCover.image ? fallbackCover.image : '';
+                    } catch (_) {
+                        coverArtUrl = '';
+                    }
+                    appendInitialisedSongCard({
+                        title: trackName,
+                        artist: artistName,
+                        songId: songId,
+                        coverArtUrl: coverArtUrl,
+                        durationMs: durationMs,
+                        downloadPrice: downloadPrice,
+                        investmentPrice: investmentPrice,
+                        fullRightsPrice: fullRightsPrice,
+                        investmentEnabled: investmentEnabled,
+                        fullRightsEnabled: fullRightsEnabled,
+                        txHash: data.tx_hash || '',
+                        ipfsCid: data.ipfs_cid || ''
+                    });
+
+                    if (typeof window.showIPFSResult === 'function') {
+                        window.showIPFSResult(
+                            trackName,
+                            artistName,
+                            data.ipfs_cid || '',
+                            data.tx_hash || null,
+                            Boolean(data.blockchain_registered),
+                            data.blockchain_error || null
+                        );
+                    }
+
+                    setInlineStatus('Initialised "' + trackName + '" successfully. ' + (data.tx_hash ? 'Tx: ' + data.tx_hash : 'IPFS CID: ' + data.ipfs_cid) + (data.ipfs_gateway_url ? ' | URL: ' + data.ipfs_gateway_url : ''), false);
+                } catch (error) {
+                    setInlineStatus('Initialise failed: ' + (error && error.message ? error.message : error), true);
+                }
+            }
+
+            if (typeof window !== 'undefined' && typeof window.addSpotifySongToBlockchain !== 'function') {
+                window.addSpotifySongToBlockchain = profileInitialiseTrack;
+            }
+
+            async function profileArtistSearch() {
+                var input = document.getElementById('spotifyArtistSearch');
+                var artistLibrary = document.getElementById('artistLibrary');
+                if (!input || !artistLibrary) return;
+
+                var query = (input.value || '').trim();
+                if (!query) {
+                    alert('Enter an artist name or Spotify artist ID to connect.');
+                    return;
+                }
+
+                artistLibrary.innerHTML = '<p>Loading artist data...</p>';
+
+                async function loadLocalArtistTracks(artistQuery) {
+                    try {
+                        var approvedResp = await fetch('http://127.0.0.1:5000/song/registered?status=approved');
+                        if (!approvedResp.ok) return [];
+                        var approvedPayload = await approvedResp.json();
+                        var approvedSongs = Array.isArray(approvedPayload)
+                            ? approvedPayload
+                            : (Array.isArray(approvedPayload && approvedPayload.songs) ? approvedPayload.songs : []);
+                        if (!Array.isArray(approvedSongs) || !approvedSongs.length) return [];
+
+                        return approvedSongs.filter(function (song) {
+                            var artistValue = '';
+                            if (Array.isArray(song.artistNames) && song.artistNames.length) {
+                                artistValue = song.artistNames.join(', ');
+                            } else {
+                                artistValue = song.artist || '';
+                            }
+                            return sameArtist(artistValue, artistQuery);
+                        }).map(function (song) {
+                            var songSongId = song.blockchain_song_id || song.song_id || song.songId || null;
+                            var isInitialised = Boolean(song.blockchain_registered || songSongId);
+                            return {
+                                id: song.spotify_id || song.id || '',
+                                name: song.songTitle || song.title || 'Unknown',
+                                artist: Array.isArray(song.artistNames) ? song.artistNames.join(', ') : (song.artistNames || song.artist || artistQuery),
+                                duration_ms: song.duration_ms || song.duration || null,
+                                album: {
+                                    name: song.album || 'Platform Registered Song',
+                                    type: isInitialised ? 'registered' : 'pending',
+                                    image: song.album_image || song.cover_art_url || song.coverArtUrl || ''
+                                },
+                                source: isInitialised ? 'platform' : 'spotify',
+                                isInitialised: isInitialised
+                            };
+                        });
+                    } catch (_) {
+                        return [];
+                    }
+                }
+
+                async function loadSpotifySearchTracks(artistQuery) {
+                    try {
+                        var spotifySearchResp = await fetch('http://127.0.0.1:5000/spotify/search?q=' + encodeURIComponent(artistQuery) + '&limit=50&offset=0');
+                        if (!spotifySearchResp.ok) return [];
+                        var spotifySearchPayload = await spotifySearchResp.json();
+                        if (!Array.isArray(spotifySearchPayload)) return [];
+
+                        return spotifySearchPayload.filter(function (track) {
+                            return sameArtist(track.artist || artistQuery, artistQuery);
+                        }).map(function (track) {
+                            return {
+                                id: track.id || track.spotify_id || '',
+                                name: track.title || track.name || 'Unknown',
+                                artist: track.artist || artistQuery,
+                                duration_ms: track.duration_ms || track.duration || null,
+                                album: {
+                                    name: track.album || 'Unknown Album',
+                                    image: track.album_image || track.cover_art_url || '',
+                                    type: 'album'
+                                },
+                                source: 'spotify',
+                                isInitialised: false
+                            };
+                        });
+                    } catch (_) {
+                        return [];
+                    }
+                }
+
+                try {
+                    var endpoint = 'http://127.0.0.1:5000/spotify/artist?artist=' + encodeURIComponent(query);
+                    var response = await fetch(endpoint);
+                    var artistData;
+                    if (!response.ok) {
+                        var errorText = 'Spotify artist search failed.';
+                        try {
+                            var errorPayload = await response.json();
+                            if (errorPayload && errorPayload.details) {
+                                errorText = String(errorPayload.details);
+                            } else if (errorPayload && errorPayload.error) {
+                                errorText = String(errorPayload.error);
+                            }
+                        } catch (_) {
+                            errorText = 'Spotify artist search failed.';
+                        }
+
+                        var spotifyOnlyFallback = await loadSpotifySearchTracks(query);
+                        if (spotifyOnlyFallback.length) {
+                            artistData = {
+                                name: query,
+                                tracks: spotifyOnlyFallback,
+                                albums: [],
+                                playlists: []
+                            };
+                        } else {
+                            artistLibrary.innerHTML = '<p>Spotify artist search failed for "' + escapeHtml(query) + '": ' + escapeHtml(errorText) + '</p>';
+                            return;
+                        }
+                    } else {
+                        artistData = await response.json();
+                    }
+
+                    if (!artistData || !Array.isArray(artistData.tracks)) {
+                        artistData = {
+                            name: query,
+                            tracks: [],
+                            albums: [],
+                            playlists: []
+                        };
+                    }
+
+                    var artistName = artistData.name || query;
+
+                    var spotifyTracks = (Array.isArray(artistData.tracks) ? artistData.tracks : []).filter(function (track) {
+                        return String(track.source || '').toLowerCase() === 'spotify';
+                    }).map(function (track) {
+                        var trackArtists = Array.isArray(track.artists)
+                            ? track.artists.map(function (a) { return (a && a.name) ? a.name : ''; }).filter(Boolean)
+                            : [];
+                        var trackAlbum = track.album || {};
+                        return {
+                            id: track.id || '',
+                            name: track.name || 'Unknown',
+                            artist: track.artist || (trackArtists.length ? trackArtists.join(', ') : artistName),
+                            duration_ms: track.duration_ms || track.duration || null,
+                            album: {
+                                name: trackAlbum.name || track.album_name || 'Unknown Album',
+                                type: trackAlbum.type || trackAlbum.album_type || 'album',
+                                image: trackAlbum.image || track.album_image || track.cover_art_url || track.coverArtUrl || ''
+                            },
+                            source: String(track.source || 'spotify').toLowerCase(),
+                            isInitialised: Boolean(track.isInitialised)
+                        };
+                    });
+
+                    // Pull extra Spotify tracks from generic search so uninitialised songs still appear
+                    // when the artist endpoint returns a trimmed list.
+                    var searchSpotifyTracks = [];
+                    try {
+                        var spotifySearchResp = await fetch('http://127.0.0.1:5000/spotify/search?q=' + encodeURIComponent(artistName) + '&limit=50&offset=0');
+                        if (spotifySearchResp.ok) {
+                            var spotifySearchPayload = await spotifySearchResp.json();
+                            if (Array.isArray(spotifySearchPayload)) {
+                                searchSpotifyTracks = spotifySearchPayload.filter(function (track) {
+                                    return sameArtist(track.artist || artistName, artistName) || sameArtist(track.artist || artistName, query);
+                                }).map(function (track) {
+                                    return {
+                                        id: track.id || track.spotify_id || '',
+                                        name: track.title || track.name || 'Unknown',
+                                        artist: track.artist || artistName,
+                                        duration_ms: track.duration_ms || track.duration || null,
+                                        album: {
+                                            name: track.album || 'Unknown Album',
+                                            image: track.album_image || track.cover_art_url || '',
+                                            type: 'album'
+                                        },
+                                        source: 'spotify',
+                                        isInitialised: false
+                                    };
+                                });
+                            }
+                        }
+                    } catch (_) {
+                        searchSpotifyTracks = [];
+                    }
+
+                    var dedupedByIdentity = {};
+                    var combinedTracks = spotifyTracks.concat(searchSpotifyTracks).reduce(function (acc, track) {
+                        var trackSpotifyKey = String(track.id || '').trim().toLowerCase();
+                        var trackArtistValue = track.artist || artistName;
+                        var titleArtistKey = normalizeName(track.name) + '::' + normalizeName(trackArtistValue);
+                        var dedupeKey = trackSpotifyKey || titleArtistKey;
+                        if (!dedupeKey) {
+                            return acc;
+                        }
+
+                        var isInitialised = Boolean(track.isInitialised);
+
+                        var normalizedTrack = {
+                            id: track.id || '',
+                            name: track.name || 'Unknown',
+                            artist: trackArtistValue,
+                            duration_ms: track.duration_ms || track.duration || null,
+                            album: track.album || {},
+                            source: String(track.source || 'spotify').toLowerCase(),
+                            isInitialised: Boolean(isInitialised)
+                        };
+
+                        if (!dedupedByIdentity[dedupeKey]) {
+                            dedupedByIdentity[dedupeKey] = normalizedTrack;
+                            acc.push(normalizedTrack);
+                            return acc;
+                        }
+
+                        var existing = dedupedByIdentity[dedupeKey];
+                        if (!existing.album || !existing.album.image) {
+                            existing.album = existing.album || {};
+                            if (normalizedTrack.album && normalizedTrack.album.image) {
+                                existing.album.image = normalizedTrack.album.image;
+                            }
+                        }
+                        if (!existing.duration_ms && normalizedTrack.duration_ms) {
+                            existing.duration_ms = normalizedTrack.duration_ms;
+                        }
+                        if (!existing.isInitialised && normalizedTrack.isInitialised) {
+                            existing.isInitialised = true;
+                        }
+                        return acc;
+                    }, []);
+
+                    combinedTracks.sort(function (a, b) {
+                        return String(a.name || '').localeCompare(String(b.name || ''));
+                    });
+
+                    if (!combinedTracks.length) {
+                        artistLibrary.innerHTML = '<p>No Spotify tracks were found for "' + escapeHtml(artistName) + '".</p>';
+                        return;
+                    }
+
+                    var enhancedTracks = await Promise.all(combinedTracks.map(async function (track) {
+                        var album = track.album || {};
+                        if (!album.image && track.coverArtUrl) {
+                            album.image = track.coverArtUrl;
+                        }
+                        if (album.image) return track;
+
+                        var fallback = await fetchFallbackCover(track.name, artistName);
+                        if (fallback && fallback.image) {
+                            track.album = track.album || {};
+                            track.album.image = fallback.image;
+                            if ((!track.album.name || track.album.name === 'Unknown' || track.album.name === 'Unknown Album') && fallback.album) {
+                                track.album.name = fallback.album;
+                            }
+                        }
+                        return track;
+                    }));
+
+                    var rows = enhancedTracks.map(function (track, idx) {
+                        var album = track.album || {};
+                        var coverArtUrl = album.image || track.coverArtUrl || '';
+                        var durationText = formatDurationMs(track.duration_ms || track.durationMs);
+                        var albumKind = (album.type || 'album').toLowerCase();
+                        var albumType = albumKind === 'single' ? 'Single' : (albumKind === 'registered' ? 'Registered' : 'Album');
+                        var img = coverArtUrl
+                            ? '<img src="' + coverArtUrl + '" alt="album cover" style="width:120px;height:120px;object-fit:cover;border-radius:10px;" />'
+                            : '<div style="width:120px;height:120px;border-radius:10px;background:linear-gradient(135deg,#d7dde8,#f2f4f8);display:flex;align-items:center;justify-content:center;color:#556;font-weight:700;">No Cover</div>';
+                        var hideStyle = idx >= PAGE_SIZE ? 'display:none;' : 'display:flex;';
+                        var trackName = escapeHtml(track.name || 'Unknown');
+                        var artistEscaped = escapeHtml(artistName);
+                        var trackId = escapeHtml(track.id || '');
+                        var sourceLabel = track.source === 'spotify' ? 'Spotify' : 'Spotify Fallback';
+                        var canInitialise = !track.isInitialised && Boolean(String(track.id || '').trim());
+                        var initButton = track.isInitialised
+                            ? '<span style="display:inline-block;background:#eaf7ef;color:#14833b;border:1px solid #b6e3c6;padding:8px 12px;border-radius:6px;font-weight:700;">Already initialised</span>'
+                            : (canInitialise
+                                ? '<button type="button" class="artist-initialise-btn" style="background:#1db954;color:#fff;border:none;padding:8px 12px;border-radius:6px;cursor:pointer;font-weight:600;">Initialise</button>'
+                                : '<span style="display:inline-block;background:#f5f5f5;color:#777;border:1px solid #ddd;padding:8px 12px;border-radius:6px;font-weight:700;">Unavailable</span>');
+
+                        return '' +
+                                '<div class="artist-result' + (idx >= PAGE_SIZE ? ' extra-artist-track' : '') + '" data-track-name="' + trackName + '" data-artist-name="' + artistEscaped + '" data-track-id="' + trackId + '" data-track-duration-ms="' + escapeHtml(String(track.duration_ms || track.durationMs || '')) + '" data-cover-art-url="' + escapeHtml(coverArtUrl) + '" data-track-initialised="' + (track.isInitialised ? 'true' : 'false') + '" style="' + hideStyle + 'gap:12px;align-items:flex-start;margin-bottom:16px;padding:12px;border:1px solid #ddd;border-radius:10px;background:#fafafa;">' +
+                                img +
+                                '<div style="flex:1;">' +
+                                    '<h4 style="margin:0 0 8px 0;">' + trackName + '</h4>' +
+                                        (durationText ? '<p style="margin:0 0 8px 0;color:#555;">Length: ' + escapeHtml(durationText) + '</p>' : '') +
+                                    '<p style="margin:0 0 8px 0;color:#555;">' + escapeHtml(albumType) + ': ' + escapeHtml(album.name || 'Unknown') + ' | Source: ' + sourceLabel + '</p>' +
+                                    initButton +
+                                '</div>' +
+                            '</div>';
+                    }).join('');
+
+                    var toggleButton = '';
+                    if (enhancedTracks.length > PAGE_SIZE) {
+                        var remaining = enhancedTracks.length - PAGE_SIZE;
+                        toggleButton = '<div style="text-align:center;margin-top:8px;"><button type="button" id="toggleArtistTracksBtn" data-visible-count="' + PAGE_SIZE + '" data-total-count="' + enhancedTracks.length + '">Show more (' + remaining + ' more)</button></div>';
+                    }
+
+                    artistLibrary.innerHTML = '<h3>' + escapeHtml(artistName) + ' (' + enhancedTracks.length + ' songs)</h3>' + rows + toggleButton;
+                } catch (error) {
+                    var emergencySpotifyFallback = await loadSpotifySearchTracks(query);
+                    if (emergencySpotifyFallback.length) {
+                        artistLibrary.innerHTML = '<h3>' + escapeHtml(query) + ' (' + emergencySpotifyFallback.length + ' songs)</h3>';
+                        var emergencyRows = emergencySpotifyFallback.map(function (track, idx) {
+                            var album = track.album || {};
+                            var coverArtUrl = album.image || track.coverArtUrl || '';
+                            var durationText = formatDurationMs(track.duration_ms || track.durationMs);
+                            var img = coverArtUrl
+                                ? '<img src="' + coverArtUrl + '" alt="album cover" style="width:120px;height:120px;object-fit:cover;border-radius:10px;" />'
+                                : '<div style="width:120px;height:120px;border-radius:10px;background:linear-gradient(135deg,#d7dde8,#f2f4f8);display:flex;align-items:center;justify-content:center;color:#556;font-weight:700;">No Cover</div>';
+                            var hideStyle = idx >= PAGE_SIZE ? 'display:none;' : 'display:flex;';
+                            var trackName = escapeHtml(track.name || 'Unknown');
+                            var artistEscaped = escapeHtml(track.artist || query);
+                            var trackId = escapeHtml(track.id || '');
+                            var canInitialise = Boolean(String(track.id || '').trim());
+                            var initControl = canInitialise
+                                ? '<button type="button" class="artist-initialise-btn" style="background:#1db954;color:#fff;border:none;padding:8px 12px;border-radius:6px;cursor:pointer;font-weight:600;">Initialise</button>'
+                                : '<span style="display:inline-block;background:#f5f5f5;color:#777;border:1px solid #ddd;padding:8px 12px;border-radius:6px;font-weight:700;">Unavailable</span>';
+
+                            return '' +
+                                '<div class="artist-result' + (idx >= PAGE_SIZE ? ' extra-artist-track' : '') + '" data-track-name="' + trackName + '" data-artist-name="' + artistEscaped + '" data-track-id="' + trackId + '" data-track-duration-ms="' + escapeHtml(String(track.duration_ms || track.durationMs || '')) + '" data-cover-art-url="' + escapeHtml(coverArtUrl) + '" style="' + hideStyle + 'gap:12px;align-items:flex-start;margin-bottom:16px;padding:12px;border:1px solid #ddd;border-radius:10px;background:#fafafa;">' +
+                                    img +
+                                    '<div style="flex:1;">' +
+                                        '<h4 style="margin:0 0 8px 0;">' + trackName + '</h4>' +
+                                        (durationText ? '<p style="margin:0 0 8px 0;color:#555;">Length: ' + escapeHtml(durationText) + '</p>' : '') +
+                                        '<p style="margin:0 0 8px 0;color:#555;">Album: ' + escapeHtml(album.name || 'Unknown') + ' | Source: Spotify</p>' +
+                                        initControl +
+                                    '</div>' +
+                                '</div>';
+                        }).join('');
+                        var emergencyToggle = '';
+                        if (emergencySpotifyFallback.length > PAGE_SIZE) {
+                            var emergencyRemaining = emergencySpotifyFallback.length - PAGE_SIZE;
+                            emergencyToggle = '<div style="text-align:center;margin-top:8px;"><button type="button" id="toggleArtistTracksBtn" data-visible-count="' + PAGE_SIZE + '" data-total-count="' + emergencySpotifyFallback.length + '">Show more (' + emergencyRemaining + ' more)</button></div>';
+                        }
+                        artistLibrary.innerHTML += emergencyRows + emergencyToggle;
+                        return;
+                    }
+
+                    artistLibrary.innerHTML = '<p>Spotify artist search failed for "' + escapeHtml(query) + '". Please try again.</p>';
+                }
+            }
+
+            if (typeof window !== 'undefined') {
+                window.profileArtistSearch = profileArtistSearch;
+                window.searchSpotifyArtist = profileArtistSearch;
+                window.artistSearch = profileArtistSearch;
+            }
+
+            var btn = document.getElementById('connectSpotifyArtistBtn');
+            var input = document.getElementById('spotifyArtistSearch');
+            if (btn) {
+                btn.onclick = null;
+                btn.addEventListener('click', function (event) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    if (typeof event.stopImmediatePropagation === 'function') {
+                        event.stopImmediatePropagation();
+                    }
+                    profileArtistSearch();
+                }, true);
+            }
+            if (input) {
+                input.addEventListener('keydown', function (event) {
+                    if (event.key === 'Enter') {
+                        event.preventDefault();
+                        profileArtistSearch();
+                    }
+                });
+            }
+
+            var artistLibraryContainer = document.getElementById('artistLibrary');
+            if (artistLibraryContainer) {
+                artistLibraryContainer.addEventListener('click', function (event) {
+                    var initBtn = event.target.closest('.artist-initialise-btn');
+                    if (initBtn) {
+                        if (typeof event.stopImmediatePropagation === 'function') {
+                            event.stopImmediatePropagation();
+                        }
+                        event.preventDefault();
+
+                        var row = initBtn.closest('.artist-result');
+                        if (!row) return;
+                        var trackName = row.getAttribute('data-track-name') || '';
+                        var artistName = row.getAttribute('data-artist-name') || '';
+                        var trackId = row.getAttribute('data-track-id') || '';
+                        var coverArtUrl = row.getAttribute('data-cover-art-url') || '';
+                        var durationMs = row.getAttribute('data-track-duration-ms') || '';
+
+                        if (!String(trackId || '').trim()) {
+                            setInlineStatus('This track cannot be initialised because Spotify track ID is missing.', true);
+                            return;
+                        }
+
+                        if (typeof window.addSpotifySongToBlockchain === 'function') {
+                            window.addSpotifySongToBlockchain(trackName, artistName, trackId, coverArtUrl, durationMs);
+                        } else {
+                            setInlineStatus('Initialise handler is unavailable. Please refresh the page.', true);
+                        }
+                        return;
+                    }
+
+                    var toggleBtn = event.target.closest('#toggleArtistTracksBtn');
+                    if (toggleBtn) {
+                        var visibleCount = parseInt(toggleBtn.getAttribute('data-visible-count') || String(PAGE_SIZE), 10);
+                        var totalCount = parseInt(toggleBtn.getAttribute('data-total-count') || String(PAGE_SIZE), 10);
+                        var rows = artistLibraryContainer.querySelectorAll('.artist-result');
+
+                        if (visibleCount >= totalCount) {
+                            visibleCount = PAGE_SIZE;
+                        } else {
+                            visibleCount = Math.min(totalCount, visibleCount + PAGE_SIZE);
+                        }
+
+                        rows.forEach(function (row, idx) {
+                            row.style.display = idx < visibleCount ? 'flex' : 'none';
+                        });
+
+                        toggleBtn.setAttribute('data-visible-count', String(visibleCount));
+                        if (visibleCount >= totalCount) {
+                            toggleBtn.textContent = 'Show less';
+                        } else {
+                            toggleBtn.textContent = 'Show more (' + (totalCount - visibleCount) + ' more)';
+                        }
+                    }
+                });
+            }
+        })();
+        </script>
+
+       
+
+        <section class="spotify-section">
+        <h2>Listen & Invest in This Track</h2>
+
+        <div class="spotify-container">
+            <iframe
+            id="platformPlayerIframe"
+            class="spotify-iframe"
+            title="Platform music player"
+            src="about:blank"
+            width="100%"
+            height="380"
+            frameborder="0"
+            allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture">
+            </iframe>
+        </div>
+        <audio id="platformPreviewAudio" crossorigin="anonymous" preload="auto" style="width:100%; display:none; margin-bottom:8px;"></audio>
+        <div id="platformCoverArtPanel" class="platform-cover-art" style="display:none;">
+            <img id="platformCoverArtImage" src="" alt="Current song cover art" />
+        </div>
+
+        <p id="platformNowPlaying" style="font-weight:600; margin:10px 0 16px 0;">Now playing: Platform default track</p>
+        <div class="platform-player-controls">
+            <button id="platformPlayBtn" type="button">Play</button>
+            <button id="platformPauseBtn" type="button">Pause</button>
+            <button id="platformStopBtn" type="button">Stop</button>
+            <button id="platformPrevBtn" type="button">Previous</button>
+            <button id="platformNextBtn" type="button">Next</button>
+            <button id="platformRewindBtn" type="button">Rewind 10s</button>
+            <button id="platformFastForwardBtn" type="button">Fast Forward 10s</button>
+            <button id="platformShuffleBtn" type="button">Shuffle: Off</button>
+            <button id="platformRepeatBtn" type="button">Repeat: Off</button>
+            <span id="platformQueueMeta">Queue: 0 tracks</span>
+        </div>
+
+        <div id="platformApprovedSongsPlayerList" class="platform-approved-song-list"></div>
+    
+    <div id="artistLibrarySecondary"></div>
+
+        <div class="invest-section">
+            <p>Your fan listening list appears below. Only initialised songs are shown across songs, artists, investments, downloaded songs, and downloaded albums views.</p>
+            <div id="initialisedSongsList"></div>
+            <p id="status"></p>
+
+            <div class="library-controls" style="margin-top:14px;">
+                <button id="loadArtistsBtn" type="button">View Artists</button>
+            </div>
+
+            <div id="library"></div>
+
+            <div id="investmentSection">
+                <h2>My Investments</h2>
+                <div id="investmentList"></div>
+            </div>
+
+            <div class="downloaded-songs" id="downloadedSongsSection">
+                <h2>Downloaded Songs</h2>
+                <div id="downloadedSongsList"></div>
+            </div>
+
+            <div class="downloaded-albums" id="downloadedAlbumsSection">
+                <h2>Downloaded Albums</h2>
+                <div id="downloadedAlbumsList"></div>
+            </div>
+        </div>
+
+     </section>
+    
+
+
+         <section class="registration-section">
+            <h2>Song Registration for PRS / CAE / IPI / SESAC / ASCAP / BMI Pro</h2>
+            <div class="registration-wrapper">
+                <div class="registration-card">
+                    <form id="songRegistrationForm">
+                        <div class="registration-row">
+                            <label for="songTitle">Song Title <span style="color:red">*</span></label>
+                            <input id="songTitle" name="songTitle" type="text" placeholder="Song title" required>
+                        </div>
+                        <div class="registration-row">
+                            <label>Artist Name <span style="color:red">*</span></label>
+                            <div id="artistsContainer" class="multi-input-group">
+                                <div class="multi-input-row">
+                                    <input class="artist-input" type="text" placeholder="Artist name" required>
+                                    <button type="button" id="addArtistBtn" class="lookup-button" style="margin-left:8px;">Add Artist</button>
+                                </div>
+                            </div>
+
+                            <label>Songwriter(s) <span style="color:red">*</span></label>
+                            <div id="writersContainer" class="multi-input-group">
+                                <div class="multi-input-row">
+                                    <label for="writer-name-0" style="margin-bottom:2px;">Writer Name <span style="color:red">*</span></label>
+                                    <input id="writer-name-0" class="writer-name" type="text" placeholder="Full name" required>
+                                    <label for="writer-share-0" style="margin-bottom:2px;">Share % <span style="color:red">*</span></label>
+                                    <input id="writer-share-0" class="writer-share" type="number" placeholder="Share %" min="0" max="100" required aria-required="true">
+                                    <label for="writer-society-0" style="margin-bottom:2px;">Society <span style="color:red">*</span></label>
+                                    <select id="writer-society-0" class="writer-society" required aria-required="true">
+                                        <option value="" disabled selected>Society</option>
+                                        <option value="PRS">PRS for Music</option>
+                                        <option value="SESAC">SESAC</option>
+                                        <option value="ASCAP">ASCAP</option>
+                                        <option value="BMI Pro">BMI Pro</option>
+                                        <option value="Other">Other</option>
+                                    </select>
+                                    <label for="writer-cae-0" style="margin-bottom:2px;">CAE / IPI Number <span style="color:red">*</span></label>
+                                    <input id="writer-cae-0" class="writer-cae" type="text" placeholder="CAE / IPI number" required aria-required="true">
+                                    <label for="writer-isrc-0" style="margin-bottom:2px;">ISRC Code</label>
+                                    <input id="writer-isrc-0" class="writer-isrc" type="text" placeholder="ISRC code" required>
+                                    <label for="writer-publisher-0" style="margin-bottom:2px;">Publisher / Label</label>
+                                    <input id="writer-publisher-0" class="writer-publisher" type="text" placeholder="Publisher or label name">
+                                    <button type="button" class="remove-row-btn">Delete</button>
+                                </div>
+                            </div>
+                            <p class="field-note">Each songwriter can have a different collection society. Split share must total 100% across all songwriters.</p>
+                        </div>
+                        <div class="registration-row">
+
+                        </div>
+                        <!-- Collection society now per-writer -->
+                        <script>
+                                                // Add Artist button logic for dynamic artist rows
+                                                document.addEventListener('DOMContentLoaded', function () {
+                                                    const artistsContainer = document.getElementById('artistsContainer');
+                                                    const addArtistBtn = document.getElementById('addArtistBtn');
+                                                    if (artistsContainer && addArtistBtn) {
+                                                        addArtistBtn.addEventListener('click', function () {
+                                                            const row = document.createElement('div');
+                                                            row.className = 'multi-input-row';
+                                                            row.innerHTML = `<input class="artist-input" type="text" placeholder="Artist name" required> <button type="button" class="remove-artist-btn" style="margin-left:8px;">Delete</button>`;
+                                                            artistsContainer.appendChild(row);
+                                                        });
+                                                        artistsContainer.addEventListener('click', function (e) {
+                                                            if (e.target.classList.contains('remove-artist-btn')) {
+                                                                e.target.parentElement.remove();
+                                                            }
+                                                        });
+                                                    }
+                                                });
+                        // Add Writer button logic for dynamic songwriter rows with individual societies
+                        document.addEventListener('DOMContentLoaded', function () {
+                            const writersContainer = document.getElementById('writersContainer');
+                            const addWriterBtn = document.getElementById('addWriterBtn');
+                            if (writersContainer && addWriterBtn) {
+                                addWriterBtn.addEventListener('click', function () {
+                                    const row = document.createElement('div');
+                                    row.className = 'multi-input-row';
+                                    const idx = writersContainer.children.length;
+                                    row.innerHTML = `
+                                        <label for=\"writer-name-${idx}\" style=\"margin-bottom:2px;\">Writer Name <span style=\"color:red\">*</span></label>
+                                        <input id=\"writer-name-${idx}\" class=\"writer-name\" type=\"text\" placeholder=\"Full name\" required>
+                                        <label for=\"writer-share-${idx}\" style=\"margin-bottom:2px;\">Share % <span style=\"color:red\">*</span></label>
+                                        <input id=\"writer-share-${idx}\" class=\"writer-share\" type=\"number\" placeholder=\"Share %\" min=\"0\" max=\"100\" required aria-required=\"true\">
+                                        <label for=\"writer-society-${idx}\" style=\"margin-bottom:2px;\">Society <span style=\"color:red\">*</span></label>
+                                        <select id=\"writer-society-${idx}\" class=\"writer-society\" required aria-required=\"true\">
+                                            <option value=\"\" disabled selected>Society</option>
+                                            <option value=\"PRS\">PRS for Music</option>
+                                            <option value=\"SESAC\">SESAC</option>
+                                            <option value=\"ASCAP\">ASCAP</option>
+                                            <option value=\"BMI Pro\">BMI Pro</option>
+                                            <option value=\"Other\">Other</option>
+                                        </select>
+                                        <label for=\"writer-cae-${idx}\" style=\"margin-bottom:2px;\">CAE / IPI Number <span style=\"color:red\">*</span></label>
+                                        <input id=\"writer-cae-${idx}\" class=\"writer-cae\" type=\"text\" placeholder=\"CAE / IPI number\" required aria-required=\"true\">
+                                        <label for=\"writer-isrc-${idx}\" style=\"margin-bottom:2px;\">ISRC Code</label>
+                                        <input id=\"writer-isrc-${idx}\" class=\"writer-isrc\" type=\"text\" placeholder=\"ISRC code\" required>
+                                        <label for=\"writer-publisher-${idx}\" style=\"margin-bottom:2px;\">Publisher / Label</label>
+                                        <input id=\"writer-publisher-${idx}\" class=\"writer-publisher\" type=\"text\" placeholder=\"Publisher or label name\">
+                                        <button type=\"button\" class=\"remove-row-btn\">Delete</button>
+                                    `;
+                                    writersContainer.appendChild(row);
+                                });
+                                writersContainer.addEventListener('click', function (e) {
+                                    if (e.target.classList.contains('remove-row-btn')) {
+                                        e.target.parentElement.remove();
+                                    }
+                                });
+                            }
+                        });
+                        </script>
+                        <!-- CAE/IPI, ISRC, and Publisher are now per-writer -->
+                            <!-- CAE/IPI, ISRC, and Publisher are now per-writer -->
+                        <button type="submit">Register Song</button>
+                            <button type="button" id="addWriterBtn" class="lookup-button" style="margin-bottom:12px;">Add Writer</button>
+                        <p id="registrationStatus" class="registration-status"></p>
+                    </form>
+                </div>
+                <div class="registration-card registration-info">
+                    <h3>Why register your song?</h3>
+                    <p>Registering your song with PRS for Music helps protect your rights and ensure you receive royalties from performances and streams.</p>
+                    <ul>
+                        <li>Use your CAE/IPI to identify yourself as the composer/author.</li>
+                        <li>Include ISRC for the track to track usage across platforms.</li>
+                        <li>Registering properly improves rights management and payment accuracy.</li>
+                        <li><b>Now with IPFS:</b> Your song metadata is stored on the decentralized IPFS network. After registration, you will see the IPFS CID (hash) for your song's metadata.</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+
+        <section id="admin-contact" style="margin: 40px auto; max-width: 600px; background: #f9f9f9; border-radius: 8px; padding: 24px; box-shadow: 0 2px 8px rgba(0,0,0,0.04);">
+                <!-- Wallet required message removed -->
+            <h2>Contact Admin</h2>
+            <form id="adminContactForm">
+                <div style="margin-bottom: 12px;">
+                    <label for="adminName">Your Name <span style="color:red">*</span></label><br>
+                    <input type="text" id="adminName" name="adminName" required style="width: 100%; padding: 8px;">
+                </div>
+                <div style="margin-bottom: 12px;">
+                    <label for="adminEmail">Your Email <span style="color:red">*</span></label><br>
+                    <input type="email" id="adminEmail" name="adminEmail" required style="width: 100%; padding: 8px;">
+                </div>
+                <div style="margin-bottom: 12px;">
+                    <label for="adminMessage">Message <span style="color:red">*</span></label><br>
+                    <textarea id="adminMessage" name="adminMessage" rows="4" required style="width: 100%; padding: 8px;"></textarea>
+                </div>
+                <button type="submit" style="padding: 10px 24px; background: #222; color: #fff; border: none; border-radius: 4px; cursor: pointer;">Send</button>
+                <p id="adminContactStatus" style="margin-top: 10px;"></p>
+            </form>
+        </section>
+    
+<footer>
+    <div class="footer1">
+        <img src="img/blochchain-music-smart.jpeg" alt="Blockchain Music Smart Logo">
+        <h2>davionlg@yahoo.co.uk</h2>
+        <p>Cricklewood Broadway<br>London NW** *JG<br>Contact No: 07964815118</p>
+        <p>&copy; 2026 All rights reserved | Singer: Davion Gowie</p>
+    </div>
+    <div id="Lsocial">
+        <a href="https://www.facebook.com/profile.php?id=100010061956882"><img src="img/fb-logo 011.png" alt="Facebook"></a>
+        <a href="https://www.instagram.com/dsignaturemillionmiles/"><img src="img/Instagram logo.png" alt="Instagram"></a>
+        <a href="https://www.linkedin.com/in/davion-gowie-ba614710a/"><img src="img/linkedin logo.png" alt="LinkedIn"></a>
+    </div>
+</footer>
+        <script>
+
+
+
+            const registrationForm = document.getElementById('songRegistrationForm');
+            const registrationStatus = document.getElementById('registrationStatus');
+            const artistsContainer = document.getElementById('artistsContainer');
+            const writersContainer = document.getElementById('writersContainer');
+            const addWriterBtn = document.getElementById('addWriterBtn');
+                        // Add Writer button logic for dynamic songwriter rows with individual societies
+                        document.addEventListener('DOMContentLoaded', function () {
+                            const writersContainer = document.getElementById('writersContainer');
+                            const addWriterBtn = document.getElementById('addWriterBtn');
+                            if (writersContainer && addWriterBtn) {
+                                addWriterBtn.addEventListener('click', function () {
+                                    const row = document.createElement('div');
+                                    row.className = 'multi-input-row';
+                                    const idx = writersContainer.children.length;
+                                    row.innerHTML = `
+                                        <label for="writer-name-${idx}" style="margin-bottom:2px;">Writer Name <span style="color:red">*</span></label>
+                                        <input id="writer-name-${idx}" class="writer-name" type="text" placeholder="Full name" required>
+                                        <label for="writer-share-${idx}" style="margin-bottom:2px;">Share % <span style="color:red">*</span></label>
+                                        <input id="writer-share-${idx}" class="writer-share" type="number" placeholder="Share %" min="0" max="100" required aria-required="true">
+                                        <label for="writer-society-${idx}" style="margin-bottom:2px;">Society <span style="color:red">*</span></label>
+                                        <select id="writer-society-${idx}" class="writer-society" required aria-required="true">
+                                            <option value="" disabled selected>Society</option>
+                                            <option value="PRS">PRS for Music</option>
+                                            <option value="SESAC">SESAC</option>
+                                            <option value="ASCAP">ASCAP</option>
+                                            <option value="BMI Pro">BMI Pro</option>
+                                            <option value="Other">Other</option>
+                                        </select>
+                                        <label for="writer-cae-${idx}" style="margin-bottom:2px;">CAE / IPI Number <span style="color:red">*</span></label>
+                                        <input id="writer-cae-${idx}" class="writer-cae" type="text" placeholder="CAE / IPI number" required aria-required="true">
+                                        <label for="writer-isrc-${idx}" style="margin-bottom:2px;">ISRC Code</label>
+                                        <input id="writer-isrc-${idx}" class="writer-isrc" type="text" placeholder="ISRC code" required>
+                                        <label for="writer-publisher-${idx}" style="margin-bottom:2px;">Publisher / Label</label>
+                                        <input id="writer-publisher-${idx}" class="writer-publisher" type="text" placeholder="Publisher or label name">
+                                        <button type="button" class="remove-row-btn">Delete</button>
+                                    `;
+                                    writersContainer.appendChild(row);
+                                });
+                                writersContainer.addEventListener('click', function (e) {
+                                    if (e.target.classList.contains('remove-row-btn')) {
+                                        e.target.parentElement.remove();
+                                    }
+                                });
+                            }
+                        });
+
+            function createWriterRow() {
+                const wrapper = document.createElement('div');
+                wrapper.className = 'multi-input-row';
+                wrapper.innerHTML = `
+                    <label style="margin-bottom:2px;">Writer Name <span style="color:red">*</span></label>
+                    <input class="writer-name" type="text" placeholder="Full name" required>
+                    <input class="writer-share" type="number" placeholder="Share %" min="0" max="100" required>
+                    <label style="margin-bottom:2px;">Society <span style="color:red">*</span></label>
+                    <select class="writer-society" required>
+                        <option value="" disabled selected>Society</option>
+                        <option value="PRS">PRS for Music</option>
+                        <option value="SESAC">SESAC</option>
+                        <option value="ASCAP">ASCAP</option>
+                        <option value="BMI Pro">BMI Pro</option>
+                        <option value="Other">Other</option>
+                    </select>
+                    <label style="margin-bottom:2px;">CAE / IPI Number <span style="color:red">*</span></label>
+                    <input class="writer-cae" type="text" placeholder="CAE / IPI number" required>
+                    <label style="margin-bottom:2px;">ISRC Code</label>
+                    <input class="writer-isrc" type="text" placeholder="ISRC code" required>
+                    <label style="margin-bottom:2px;">Publisher / Label</label>
+                    <input class="writer-publisher" type="text" placeholder="Publisher or label name">
+                    <button type="button" class="remove-row-btn">Delete</button>
+                `;
+                wrapper.querySelector('.remove-row-btn').addEventListener('click', () => {
+                    wrapper.remove();
+                    if (writersContainer.querySelectorAll('.multi-input-row').length === 0) {
+                        writersContainer.appendChild(createWriterRow());
+                    }
+                });
+                return wrapper;
+            }
+
+            addWriterBtn.addEventListener('click', function () {
+                writersContainer.appendChild(createWriterRow());
+            });
+
+            // ===== Wallet + ID Verification Logic =====
+            const verifyBtn = document.getElementById('verifyIdBtn');
+            const clearBtn = document.getElementById('clearVerificationBtn');
+            const idStatus = document.getElementById('idVerificationStatus');
+            const idTypeInput = document.getElementById('idType');
+            const idNumberInput = document.getElementById('idNumber');
+            const idDocumentInput = document.getElementById('idDocument');
+            const idDocumentHint = document.getElementById('idDocumentHint');
+            const driversLicensePhotos = document.getElementById('driversLicensePhotos');
+            const idDocumentFrontInput = document.getElementById('idDocumentFront');
+            const idDocumentBackInput = document.getElementById('idDocumentBack');
+            const registerSubmitBtn = registrationForm ? registrationForm.querySelector('button[type="submit"]') : null;
+            const connectBtn = document.getElementById('connectBtn');
+            const walletAddressDisplay = document.getElementById('walletAddress');
+
+            let connectedWallet = null;
+
+            function setConnectedWallet(addr) {
+                connectedWallet = addr || null;
+                try {
+                    if (addr) {
+                        localStorage.setItem('user_wallet', addr);
+                        localStorage.setItem('userWallet', addr);
+                    } else {
+                        localStorage.removeItem('user_wallet');
+                        localStorage.removeItem('userWallet');
+                    }
+                } catch(e){}
+                if (typeof window !== 'undefined') {
+                    window.userWallet = addr || null;
+                }
+                if (walletAddressDisplay) walletAddressDisplay.textContent = addr ? `Connected: ${addr}` : '';
+            }
+
+            async function connectWallet() {
+                if (!window.ethereum) {
+                    alert('No Ethereum provider detected. Install MetaMask.');
+                    return null;
+                }
+                try {
+                    // Ensure user is on Avalanche Fuji testnet
+                    await ensureAvalancheFujiNetwork();
+                    const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+                    if (accounts && accounts.length > 0) {
+                        setConnectedWallet(accounts[0]);
+                        return accounts[0];
+                    }
+                } catch (e) {
+                    console.error('Wallet connect error', e);
+                }
+                return null;
+            }
+
+            async function ensureAvalancheFujiNetwork() {
+                // Avalanche Fuji chainId: 0xa869 (43113)
+                const FUJI_CHAIN_ID = '0xA869'.toLowerCase();
+                try {
+                    const chainId = await window.ethereum.request({ method: 'eth_chainId' });
+                    if (chainId && chainId.toLowerCase() === FUJI_CHAIN_ID) return;
+                } catch (e) {
+                    // continue to attempt adding/switching
+                }
+                try {
+                    await window.ethereum.request({
+                        method: 'wallet_addEthereumChain',
+                        params: [{
+                            chainId: '0xA869',
+                            chainName: 'Avalanche Fuji Testnet',
+                            nativeCurrency: { name: 'Avalanche', symbol: 'AVAX', decimals: 18 },
+                            rpcUrls: ['https://api.avax-test.network/ext/bc/C/rpc'],
+                            blockExplorerUrls: ['https://testnet.snowtrace.io']
+                        }]
+                    });
+                    // After adding, request switch
+                    await window.ethereum.request({ method: 'wallet_switchEthereumChain', params: [{ chainId: '0xA869' }] });
+                } catch (err) {
+                    console.warn('Could not switch or add Avalanche Fuji network:', err);
+                }
+            }
+
+            const inlineWalletFlowEnabled = !window.__smartmusicWalletBound;
+
+            // restore wallet if previously connected and auto-connect when user recently logged in
+            if (inlineWalletFlowEnabled) {
+                (async function(){
+                    try {
+                        const w = localStorage.getItem('user_wallet');
+                        const logged = localStorage.getItem('user_logged_in') === '1';
+                        if (w) setConnectedWallet(w);
+                        if (logged) {
+                            // attempt to (re)connect via provider to ensure permissions are active
+                            try {
+                                const addr = await connectWallet();
+                                if (addr) setConnectedWallet(addr);
+                            } catch(e) {
+                                // ignore connect failures
+                            }
+                        }
+                    } catch(e){}
+                })();
+            }
+
+            if (connectBtn && inlineWalletFlowEnabled) {
+                connectBtn.addEventListener('click', async function(){
+                    const addr = await connectWallet();
+                    if (addr) {
+                        try {
+                            window.dispatchEvent(new CustomEvent('wallet:connected', { detail: { wallet: addr } }));
+                        } catch (e) {
+                            // non-fatal
+                        }
+                        if (typeof loadLibrary === 'function') {
+                            try { await loadLibrary(); } catch (e) {}
+                        }
+                        if (typeof loadArtists === 'function') {
+                            try { await loadArtists(); } catch (e) {}
+                        }
+                        alert('Wallet connected: ' + addr);
+                    }
+                });
+            }
+
+            function setVerified(flag) {
+                try { localStorage.setItem('id_verified', flag ? '1' : '0'); } catch (e) {}
+                if (idStatus) {
+                    idStatus.textContent = flag ? 'Verified' : 'Not verified (pending)';
+                    idStatus.style.color = flag ? 'green' : '#666';
+                }
+                if (registerSubmitBtn) {
+                    registerSubmitBtn.disabled = false;
+                    registerSubmitBtn.title = flag ? '' : 'Verify your ID before registering songs.';
+                }
+            }
+
+            // Initialize state on load
+            (function(){
+                const stored = (localStorage.getItem('id_verified') === '1');
+                setVerified(stored);
+            })();
+
+            function updateIdDocumentInputMode() {
+                if (!idTypeInput || !idDocumentInput) return;
+                const selectedType = String(idTypeInput.value || '').trim();
+                const isDriversLicense = selectedType === 'drivers_license';
+                if (driversLicensePhotos) {
+                    driversLicensePhotos.style.display = isDriversLicense ? 'flex' : 'none';
+                }
+                idDocumentInput.style.display = isDriversLicense ? 'none' : 'block';
+                idDocumentInput.multiple = false;
+                idDocumentInput.accept = 'image/*,application/pdf';
+                if (idDocumentHint) {
+                    idDocumentHint.textContent = isDriversLicense
+                        ? 'Driver\'s License requires 2 pictures (front and back).'
+                        : 'Upload 1 document.';
+                }
+                // Reset selected files when mode changes to avoid stale invalid selections.
+                idDocumentInput.value = '';
+                if (idDocumentFrontInput) idDocumentFrontInput.value = '';
+                if (idDocumentBackInput) idDocumentBackInput.value = '';
+            }
+
+            if (idTypeInput) {
+                idTypeInput.addEventListener('change', updateIdDocumentInputMode);
+                updateIdDocumentInputMode();
+            }
+
+            async function pollVerificationByAddress(address, intervalMs = 8000, maxAttempts = 15) {
+                if (!address) return;
+                let attempts = 0;
+                const iv = setInterval(async () => {
+                    attempts += 1;
+                    try {
+                        const res = await fetch(`/id/status?userAddress=${encodeURIComponent(address)}`);
+                        if (res.ok) {
+                            const j = await res.json();
+                            if (j.success && j.record && j.record.status === 'verified') {
+                                setVerified(true);
+                                clearInterval(iv);
+                                return;
+                            }
+                        }
+                    } catch (e) {
+                        console.error('Polling error', e);
+                    }
+                    if (attempts >= maxAttempts) clearInterval(iv);
+                }, intervalMs);
+            }
+
+            if (verifyBtn) {
+                verifyBtn.addEventListener('click', async function(){
+                    const idType = idTypeInput ? idTypeInput.value.trim() : '';
+                    const idNum = idNumberInput ? idNumberInput.value.trim() : '';
+                    const selectedFiles = [];
+                    if (!idType) {
+                        alert('Please select an ID type (Passport, Driver\'s License, National ID, CAE, or IPI).');
+                        return;
+                    }
+                    if (!idNum || idNum.length < 4) {
+                        alert('Please enter a valid ID number (at least 4 characters).');
+                        return;
+                    }
+                    if (idType === 'drivers_license') {
+                        const frontFile = idDocumentFrontInput && idDocumentFrontInput.files && idDocumentFrontInput.files[0];
+                        const backFile = idDocumentBackInput && idDocumentBackInput.files && idDocumentBackInput.files[0];
+                        if (!frontFile || !backFile) {
+                            alert('Driver\'s License verification requires exactly 2 pictures (front and back).');
+                            return;
+                        }
+                        selectedFiles.push(frontFile, backFile);
+                    } else {
+                        const singleFile = idDocumentInput && idDocumentInput.files && idDocumentInput.files[0];
+                        if (!singleFile) {
+                            alert('Please upload exactly 1 ID document to verify.');
+                            return;
+                        }
+                        selectedFiles.push(singleFile);
+                    }
+
+                    if (selectedFiles.length === 0) {
+                        alert('Please upload exactly 1 ID document to verify.');
+                        return;
+                    }
+
+                    // Submit to backend for manual verification
+                    const fd = new FormData();
+                    fd.append('idType', idType);
+                    fd.append('idNumber', idNum);
+                    selectedFiles.forEach((file) => {
+                        fd.append('idDocument', file);
+                    });
+
+                    idStatus.textContent = 'Submitting...';
+                    try {
+                        const submitUrls = [
+                            '/id/submit',
+                            'http://127.0.0.1:5000/id/submit',
+                            'http://127.0.0.1:5004/id/submit'
+                        ];
+                        let res = null;
+                        let lastNetworkError = null;
+                        let lastErrorText = '';
+                        for (const submitUrl of submitUrls) {
+                            try {
+                                const attemptRes = await fetch(submitUrl, { method: 'POST', body: fd });
+                                if (attemptRes.ok) {
+                                    res = attemptRes;
+                                    lastErrorText = '';
+                                    break;
+                                }
+                                const attemptRaw = await attemptRes.text();
+                                lastErrorText = attemptRaw || `HTTP ${attemptRes.status}`;
+                            } catch (networkErr) {
+                                lastNetworkError = networkErr;
+                            }
+                        }
+                        if (!res) {
+                            if (lastErrorText) {
+                                idStatus.textContent = lastErrorText;
+                                return;
+                            }
+                            throw lastNetworkError || new Error('Unable to reach ID submit endpoint.');
+                        }
+
+                        const raw = await res.text();
+                        let j = null;
+                        try { j = raw ? JSON.parse(raw) : null; } catch (_) { j = null; }
+                        idStatus.textContent = 'Submitted (pending)';
+                        setVerified(false);
+                        // save record id for admin verification tracking
+                        try { if (j && j.id) localStorage.setItem('id_verification_record_id', j.id); } catch(e){}
+                        alert('ID submitted for verification. Admin will approve shortly.');
+                    } catch (e) {
+                        console.error(e);
+                        idStatus.textContent = 'Submission failed: backend not reachable. Start server on 127.0.0.1:5000.';
+                    }
+                });
+            }
+
+            if (clearBtn) {
+                clearBtn.addEventListener('click', function(){
+                    if (idNumberInput) idNumberInput.value = '';
+                    if (idDocumentInput) idDocumentInput.value = '';
+                    if (idDocumentFrontInput) idDocumentFrontInput.value = '';
+                    if (idDocumentBackInput) idDocumentBackInput.value = '';
+                    updateIdDocumentInputMode();
+                    try { localStorage.removeItem('id_verification_record_id'); } catch(e){}
+                    setVerified(false);
+                });
+            }
+
+            registrationForm.addEventListener('submit', async function (event) {
+                event.preventDefault();
+
+                // Show a warning if ID verification is still pending, but do not block registration.
+                try {
+                    const verified = (localStorage.getItem('id_verified') === '1');
+                    if (!verified) {
+                        registrationStatus.textContent = 'ID verification is pending, but the song will still be sent for admin review.';
+                        registrationStatus.className = 'registration-status error';
+                    }
+                } catch (e) {
+                    // storage access issue - continue with registration flow
+                    registrationStatus.textContent = 'Unable to read ID state. Continuing with song registration.';
+                    registrationStatus.className = 'registration-status error';
+                }
+
+                const getArtistValue = () => {
+                    const input = artistsContainer.querySelector('.artist-input');
+                    return input ? input.value.trim() : '';
+                };
+
+                const getWriterValues = () => {
+                    return Array.from(writersContainer.querySelectorAll('.multi-input-row')).map(row => {
+                        const nameInput = row.querySelector('.writer-name');
+                        const shareInput = row.querySelector('.writer-share');
+                        const societyInput = row.querySelector('.writer-society');
+                        const caeInput = row.querySelector('.writer-cae');
+                        const isrcInput = row.querySelector('.writer-isrc');
+                        const publisherInput = row.querySelector('.writer-publisher');
+
+                        return {
+                            name: nameInput ? nameInput.value.trim() : '',
+                            share: shareInput ? Number(shareInput.value.trim() || 0) : 0,
+                            society: societyInput ? societyInput.value.trim() : '',
+                            caeIpi: caeInput ? caeInput.value.trim() : '',
+                            isrc: isrcInput ? isrcInput.value.trim() : '',
+                            publisher: publisherInput ? publisherInput.value.trim() : ''
+                        };
+                    }).filter(item => item.name.length > 0);
+                };
+
+                const artistName = getArtistValue();
+                const writerNames = getWriterValues();
+                const totalWriterShare = writerNames.reduce((sum, writer) => sum + writer.share, 0);
+                const primaryWriter = writerNames[0] || null;
+                const collectionSociety = primaryWriter ? primaryWriter.society : '';
+                const caeIpi = primaryWriter ? primaryWriter.caeIpi : '';
+                const isrc = primaryWriter ? primaryWriter.isrc : '';
+                const publisher = primaryWriter ? primaryWriter.publisher : '';
+
+                if (!registrationForm.songTitle.value.trim() || !caeIpi || !isrc || !collectionSociety || !artistName || writerNames.length === 0) {
+                    registrationStatus.textContent = 'Please fill in the required fields: song title, artist name, at least one songwriter, society, CAE/IPI, and ISRC.';
+                    registrationStatus.className = 'registration-status error';
+                    return;
+                }
+
+                if (totalWriterShare !== 100) {
+                    registrationStatus.textContent = 'Writer split shares must total 100%.';
+                    registrationStatus.className = 'registration-status error';
+                    return;
+                }
+
+                const formData = new FormData();
+                formData.append('songTitle', registrationForm.songTitle.value.trim());
+                formData.append('artistName', artistName);
+                formData.append('writerNames', JSON.stringify(writerNames.map(writer => writer.name)));
+                formData.append('collectionSociety', collectionSociety);
+                formData.append('caeIpi', caeIpi);
+                formData.append('isrc', isrc);
+                formData.append('publisher', publisher);
+                // Attach connected wallet address so backend can link record to wallet (not uploaded on-chain)
+                try { if (connectedWallet) formData.append('userAddress', connectedWallet); } catch(e){}
+
+                registrationStatus.textContent = 'Registering...';
+                try {
+                    const submitUrls = [
+                        '/song/register',
+                        'http://127.0.0.1:5000/song/register',
+                        'http://localhost:5000/song/register'
+                    ];
+                    let response = null;
+                    let result = null;
+                    let lastNetworkError = null;
+                    let lastErrorMessage = '';
+
+                    for (const submitUrl of submitUrls) {
+                        try {
+                            const attemptResponse = await fetch(submitUrl, {
+                                method: 'POST',
+                                body: formData
+                            });
+                            const attemptRaw = await attemptResponse.text();
+                            let attemptJson = null;
+                            try {
+                                attemptJson = attemptRaw ? JSON.parse(attemptRaw) : null;
+                            } catch (_) {
+                                attemptJson = null;
+                            }
+
+                            if (attemptResponse.ok) {
+                                response = attemptResponse;
+                                result = attemptJson || { message: attemptRaw };
+                                break;
+                            }
+
+                            lastErrorMessage = (attemptJson && attemptJson.message) || attemptRaw || `HTTP ${attemptResponse.status}`;
+                        } catch (networkError) {
+                            lastNetworkError = networkError;
+                        }
+                    }
+
+                    if (!response) {
+                        if (lastErrorMessage) {
+                            registrationStatus.textContent = lastErrorMessage;
+                            registrationStatus.className = 'registration-status error';
+                            return;
+                        }
+                        throw lastNetworkError || new Error('Unable to reach song registration endpoint.');
+                    }
+
+                    if (!response.ok) {
+                        registrationStatus.textContent = result.message || 'Registration failed.';
+                        registrationStatus.className = 'registration-status error';
+                        return;
+                    }
+
+                    let statusMsg = result.message || 'Song registered successfully and sent to admin review.';
+                    if (statusMsg && !/admin review/i.test(statusMsg)) {
+                        statusMsg += ' It is now pending admin approval, rejection, or deletion.';
+                    }
+                    if (result.song && result.song.ipfs_cid) {
+                        statusMsg += `\nIPFS CID: <a href="https://ipfs.io/ipfs/${result.song.ipfs_cid}" target="_blank">${result.song.ipfs_cid}</a>`;
+                    }
+                    registrationStatus.innerHTML = statusMsg;
+                    registrationStatus.className = 'registration-status success';
+                    registrationForm.reset();
+                    artistsContainer.innerHTML = '';
+                    writersContainer.innerHTML = '';
+                    const artistRow = document.createElement('div');
+                    artistRow.className = 'multi-input-row';
+                    artistRow.innerHTML = '<input class="artist-input" type="text" placeholder="Artist name" required> <button type="button" id="addArtistBtn" class="lookup-button" style="margin-left:8px;">Add Artist</button>';
+                    artistsContainer.appendChild(artistRow);
+                    writersContainer.appendChild(createWriterRow());
+                    // Reload library to show new song
+                    if (typeof loadLibrary === 'function') {
+                        loadLibrary();
+                    }
+                } catch (error) {
+                    registrationStatus.textContent = 'Unable to register song. Please try again later.';
+                    registrationStatus.className = 'registration-status error';
+                    console.error('Song registration error:', error);
+                }
+            });
+        </script>
+    </body>
+</html>

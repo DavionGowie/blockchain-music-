@@ -1,0 +1,223 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Admin Panel | Music Smart</title>
+    <link rel="stylesheet" type="text/css" href="css/main.css">
+</head>
+<body>
+    <header>
+        <div id="Logo">
+            <img src="img/blochchain-music-smart.jpeg" alt="Music Smart Logo">
+            <h2>Admin Panel</h2>
+        </div>
+    </header>
+
+    <main class="page-center">
+        <div class="login-container">
+            <div class="lookup-action" style="margin-bottom: 20px; display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap;">
+                <button id="refreshBtn" class="lookup-button">Refresh List</button>
+                <button id="logoutBtn" class="lookup-button" style="background-color:#c12c2c;">Logout</button>
+            </div>
+            <div id="adminMessage" style="text-align:center;margin-bottom:16px;"></div>
+            <div style="display:flex;gap:18px;align-items:flex-start;">
+                <div style="flex:1;">
+                    <h3>Registered Songs</h3>
+                    <div id="registeredSongsContainer" class="registration-wrapper"></div>
+                </div>
+                <div style="width:420px;">
+                    <h3>ID Submissions</h3>
+                    <div style="display:flex;gap:6px;margin-bottom:8px;">
+                        <input id="idSearch" type="text" placeholder="Search id number or wallet" style="flex:1;padding:6px;" />
+                        <button id="idSearchBtn" class="lookup-button">Search</button>
+                    </div>
+                    <div id="idSubmissionsContainer" class="registration-wrapper"></div>
+                    <div style="display:flex;gap:8px;justify-content:space-between;margin-top:8px;">
+                        <button id="idPrevBtn" class="lookup-button">Prev</button>
+                        <div id="idPageInfo" style="align-self:center">Page 1</div>
+                        <button id="idNextBtn" class="lookup-button">Next</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        const API_BASE = localStorage.getItem('API_BASE') || (window.location.origin.startsWith('file:') ? 'http://127.0.0.1:5000' : window.location.origin);
+        const container = document.getElementById('registeredSongsContainer');
+        const refreshBtn = document.getElementById('refreshBtn');
+        const logoutBtn = document.getElementById('logoutBtn');
+        const adminMessage = document.getElementById('adminMessage');
+
+        function getToken() {
+            return localStorage.getItem('adminToken');
+        }
+
+        function redirectToLogin() {
+            localStorage.removeItem('adminToken');
+            window.location.href = 'admin_login.html';
+        }
+
+        async function loadRegisteredSongs() {
+            const token = getToken();
+            if (!token) {
+                redirectToLogin();
+                return;
+            }
+
+            container.innerHTML = '<p>Loading...</p>';
+            adminMessage.textContent = '';
+
+            try {
+                const response = await fetch(`${API_BASE}/song/registered`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+                const result = await response.json();
+
+                if (!response.ok) {
+                    if (response.status === 401 || response.status === 403) {
+                        redirectToLogin();
+                        return;
+                    }
+                    container.innerHTML = `<p class="registration-status error">${result.message || 'Failed to load registered songs.'}</p>`;
+                    return;
+                }
+
+                const songs = result.songs || [];
+                adminMessage.textContent = `Loaded ${result.count} registered song(s).`;
+
+                if (!songs.length) {
+                    container.innerHTML = '<p>No registered songs found.</p>';
+                    return;
+                }
+
+                const formatList = (value) => Array.isArray(value) ? value.join(', ') : (value || 'N/A');
+                container.innerHTML = songs.map(song => `
+                    <div class="registration-card">
+                        <h3>${song.songTitle}</h3>
+                        <p><strong>Artist:</strong> ${formatList(song.artistNames || song.artistName)}</p>
+                        <p><strong>Writer:</strong> ${formatList(song.writerNames || song.writerName)}</p>
+                        <p><strong>Society:</strong> ${song.collectionSociety}</p>
+                        <p><strong>CAE / IPI:</strong> ${song.caeIpi}</p>
+                        <p><strong>ISRC:</strong> ${song.isrc}</p>
+                        <p><strong>Publisher:</strong> ${song.publisher || 'N/A'}</p>
+                        <p><strong>Registered at:</strong> ${new Date(song.registered_at * 1000).toLocaleString()}</p>
+                    </div>
+                `).join('');
+            } catch (error) {
+                container.innerHTML = '<p class="registration-status error">Unable to contact the backend.</p>';
+                console.error(error);
+            }
+        }
+
+        let idPage = 1;
+        const idPageSize = 8;
+
+        async function loadIdSubmissions(page = 1, q = '') {
+            const token = getToken(); if (!token) { redirectToLogin(); return; }
+            idPage = page;
+            const out = document.getElementById('idSubmissionsContainer');
+            const pageInfo = document.getElementById('idPageInfo');
+            out.innerHTML = '<p>Loading...</p>';
+            pageInfo.textContent = `Page ${page}`;
+            try {
+                const url = new URL(`${API_BASE}/admin/id_submissions`);
+                url.searchParams.set('page', page);
+                url.searchParams.set('page_size', idPageSize);
+                if (q) url.searchParams.set('q', q);
+                const res = await fetch(url.toString(), { headers: { 'Authorization': `Bearer ${token}` } });
+                if (!res.ok) { out.innerHTML = '<p class="registration-status error">Failed to load ID submissions.</p>'; return; }
+                const j = await res.json();
+                pageInfo.textContent = `Page ${j.page} / ${Math.max(1, Math.ceil((j.count||0)/j.page_size))}`;
+                if (!j.submissions || !j.submissions.length) { out.innerHTML = '<p>No submissions.</p>'; return; }
+                out.innerHTML = j.submissions.map(s => `
+                    <div class="registration-card" id="id-${s.id}">
+                        <p><strong>ID:</strong> ${s.id}</p>
+                        <p><strong>Number:</strong> ${s.id_number}</p>
+                        <p><strong>Wallet:</strong> ${s.user_address || 'N/A'}</p>
+                        <p><strong>Submitted:</strong> ${new Date(s.submitted_at*1000).toLocaleString()}</p>
+                        <p><strong>Status:</strong> ${s.status}</p>
+                        <div style="display:flex;gap:8px;">
+                            <button onclick="downloadFile('${s.id}')">Download File</button>
+                            <button onclick="approveId('${s.id}')">Approve</button>
+                            <button onclick="rejectId('${s.id}')" style="background:#c12c2c;color:#fff">Reject</button>
+                        </div>
+                    </div>
+                `).join('');
+            } catch (e) { out.innerHTML = '<p class="registration-status error">Error loading submissions.</p>'; console.error(e); }
+        }
+
+        async function approveId(id) {
+            const token = getToken(); if (!token) { redirectToLogin(); return; }
+            if (!confirm('Approve this ID submission?')) return;
+            try {
+                const res = await fetch(`${API_BASE}/id/approve`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                    body: JSON.stringify({ id: id })
+                });
+                const j = await res.json();
+                if (!res.ok) { alert(j.error || 'Approve failed'); return; }
+                alert('Approved');
+                loadIdSubmissions(idPage, document.getElementById('idSearch').value.trim());
+            } catch (e) { console.error(e); alert('Approve failed'); }
+        }
+
+        async function rejectId(id) {
+            const token = getToken(); if (!token) { redirectToLogin(); return; }
+            const reason = prompt('Rejection reason (optional)');
+            if (!confirm('Reject this ID submission?')) return;
+            try {
+                const res = await fetch(`${API_BASE}/id/reject`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                    body: JSON.stringify({ id: id, reason: reason })
+                });
+                const j = await res.json();
+                if (!res.ok) { alert(j.error || 'Reject failed'); return; }
+                alert('Rejected');
+                loadIdSubmissions(idPage, document.getElementById('idSearch').value.trim());
+            } catch (e) { console.error(e); alert('Reject failed'); }
+        }
+
+        async function downloadFile(id) {
+            const token = getToken(); if (!token) { redirectToLogin(); return; }
+            try {
+                const res = await fetch(`${API_BASE}/admin/id_file/${id}`, { headers: { 'Authorization': `Bearer ${token}` } });
+                const contentType = res.headers.get('content-type') || '';
+                if (contentType.includes('application/json')) {
+                    const j = await res.json();
+                    if (j.url) { window.open(j.url, '_blank'); return; }
+                    alert(j.message || 'No download URL');
+                    return;
+                }
+                const blob = await res.blob();
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'id_document';
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                URL.revokeObjectURL(url);
+            } catch (e) { console.error(e); alert('Download failed'); }
+        }
+
+        document.getElementById('idSearchBtn').addEventListener('click', function(){ loadIdSubmissions(1, document.getElementById('idSearch').value.trim()); });
+        document.getElementById('idPrevBtn').addEventListener('click', function(){ if (idPage>1) loadIdSubmissions(idPage-1, document.getElementById('idSearch').value.trim()); });
+        document.getElementById('idNextBtn').addEventListener('click', function(){ loadIdSubmissions(idPage+1, document.getElementById('idSearch').value.trim()); });
+
+        refreshBtn.addEventListener('click', () => { loadRegisteredSongs(); loadIdSubmissions(); });
+        logoutBtn.addEventListener('click', async function () {
+            await fetch(`${API_BASE}/admin/logout`, { method: 'POST', credentials: 'include' });
+            redirectToLogin();
+        });
+        loadRegisteredSongs();
+        loadIdSubmissions();
+    </script>
+</body>
+</html>
